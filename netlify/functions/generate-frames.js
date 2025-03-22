@@ -20,6 +20,7 @@ exports.handler = async function(event, context) {
       };
     }
 
+    
     // The system prompt for Gemini
     const systemPrompt = `You are an expert in media framing analysis. Your task is to take a news headline and generate 5 different ways it could be framed by different news sources with varying perspectives and biases. You should NOT label the frames by political leaning or specific news outlets.
 
