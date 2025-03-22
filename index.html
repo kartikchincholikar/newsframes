@@ -138,9 +138,6 @@
     </div>
 
     <script>
-        const API_KEY = "YOUR_GEMINI_API_KEY"; // Replace with your actual API key
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-        
         const headlineInput = document.getElementById('headline-input');
         const generateBtn = document.getElementById('generate-btn');
         const resetBtn = document.getElementById('reset-btn');
@@ -148,21 +145,6 @@
         const framesContainer = document.getElementById('frames-container');
         const loader = document.getElementById('loader');
         const errorMessage = document.getElementById('error-message');
-        
-        // The system prompt for Gemini
-        const systemPrompt = `You are an expert in media framing analysis. Your task is to take a news headline and generate 5 different ways it could be framed by different news sources with varying perspectives and biases. You should NOT label the frames by political leaning or specific news outlets.
-
-Instead, label each frame with a descriptive title that indicates the focus or perspective (e.g., "Economic Impact Focus", "Human Interest Angle", "Historical Context Frame", "Global Perspective", "Conflict-Centered").
-
-For each frame:
-1. Provide a rewritten headline that demonstrates that particular framing
-2. Keep the core facts the same, but change emphasis, word choice, and perspective
-3. Make the differences subtle but noticeable
-
-Format each frame as:
-[Frame Title]: [Rewritten Headline]
-
-Return ONLY the frames without additional commentary, explanation, or preamble.`;
         
         generateBtn.addEventListener('click', async () => {
             const headline = headlineInput.value.trim();
@@ -179,8 +161,21 @@ Return ONLY the frames without additional commentary, explanation, or preamble.`
             generateBtn.disabled = true;
             
             try {
-                const frames = await getNewsFrames(headline);
-                displayFrames(frames);
+                // Call our Netlify function instead of directly calling Gemini API
+                const response = await fetch('/.netlify/functions/generate-frames', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ headline })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayFrames(data.frames);
                 
                 // Show results and reset button, hide generate button
                 resultsContainer.style.display = "block";
@@ -207,59 +202,6 @@ Return ONLY the frames without additional commentary, explanation, or preamble.`
             generateBtn.style.display = "block";
             errorMessage.style.display = "none";
         });
-        
-        async function getNewsFrames(headline) {
-            const requestBody = {
-                contents: [
-                    {
-                        role: "user",
-                        parts: [
-                            {
-                                text: systemPrompt + "\n\nHeadline: " + headline
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1024
-                }
-            };
-            
-            const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(requestBody)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`API request failed with status ${response.status}`);
-            }
-            
-            const data = await response.json();
-            return parseFrames(data.candidates[0].content.parts[0].text);
-        }
-        
-        function parseFrames(text) {
-            // Split the text by new lines and filter out empty lines
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            
-            // Parse each line into a frame object
-            const frames = [];
-            lines.forEach(line => {
-                const match = line.match(/^(.+?):\s(.+)$/);
-                if (match) {
-                    frames.push({
-                        title: match[1].trim(),
-                        headline: match[2].trim()
-                    });
-                }
-            });
-            
-            return frames;
-        }
         
         function displayFrames(frames) {
             framesContainer.innerHTML = "";
