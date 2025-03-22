@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Frames</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .description {
+            margin-bottom: 30px;
+            text-align: center;
+            color: #555;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 0 auto;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .frame {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .frame-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>News Frames</h1>
+        <p class="description">
+            See how the same news headline can be framed differently based on perspective and bias.
+            Enter a headline below and see how it might appear across different sources.
+        </p>
+        
+        <div class="input-group">
+            <textarea id="headline-input" placeholder="Enter a news headline here..."></textarea>
+            <button id="generate-btn">Get News Frames</button>
+            <button id="reset-btn" style="display: none; background-color: #e74c3c;">Reset</button>
+        </div>
+        
+        <div id="loader" class="loader"></div>
+        <div id="error-message" class="error"></div>
+        
+        <div id="results" class="results">
+            <h2>Different Frames:</h2>
+            <div id="frames-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "YOUR_GEMINI_API_KEY"; // Replace with your actual API key
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+        
+        const headlineInput = document.getElementById('headline-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultsContainer = document.getElementById('results');
+        const framesContainer = document.getElementById('frames-container');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        
+        // The system prompt for Gemini
+        const systemPrompt = `You are an expert in media framing analysis. Your task is to take a news headline and generate 5 different ways it could be framed by different news sources with varying perspectives and biases. You should NOT label the frames by political leaning or specific news outlets.
+
+Instead, label each frame with a descriptive title that indicates the focus or perspective (e.g., "Economic Impact Focus", "Human Interest Angle", "Historical Context Frame", "Global Perspective", "Conflict-Centered").
+
+For each frame:
+1. Provide a rewritten headline that demonstrates that particular framing
+2. Keep the core facts the same, but change emphasis, word choice, and perspective
+3. Make the differences subtle but noticeable
+
+Format each frame as:
+[Frame Title]: [Rewritten Headline]
+
+Return ONLY the frames without additional commentary, explanation, or preamble.`;
+        
+        generateBtn.addEventListener('click', async () => {
+            const headline = headlineInput.value.trim();
+            
+            if (!headline) {
+                errorMessage.textContent = "Please enter a headline first.";
+                errorMessage.style.display = "block";
+                return;
+            }
+            
+            // Show loader and hide error
+            loader.style.display = "block";
+            errorMessage.style.display = "none";
+            generateBtn.disabled = true;
+            
+            try {
+                const frames = await getNewsFrames(headline);
+                displayFrames(frames);
+                
+                // Show results and reset button, hide generate button
+                resultsContainer.style.display = "block";
+                resetBtn.style.display = "block";
+                generateBtn.style.display = "none";
+            } catch (error) {
+                errorMessage.textContent = "Error generating news frames. Please try again.";
+                errorMessage.style.display = "block";
+                console.error("Error:", error);
+            } finally {
+                loader.style.display = "none";
+                generateBtn.disabled = false;
+            }
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            // Clear input and results
+            headlineInput.value = "";
+            framesContainer.innerHTML = "";
+            
+            // Hide results and reset button, show generate button
+            resultsContainer.style.display = "none";
+            resetBtn.style.display = "none";
+            generateBtn.style.display = "block";
+            errorMessage.style.display = "none";
+        });
+        
+        async function getNewsFrames(headline) {
+            const requestBody = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            {
+                                text: systemPrompt + "\n\nHeadline: " + headline
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 1024
+                }
+            };
+            
+            const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return parseFrames(data.candidates[0].content.parts[0].text);
+        }
+        
+        function parseFrames(text) {
+            // Split the text by new lines and filter out empty lines
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            
+            // Parse each line into a frame object
+            const frames = [];
+            lines.forEach(line => {
+                const match = line.match(/^(.+?):\s(.+)$/);
+                if (match) {
+                    frames.push({
+                        title: match[1].trim(),
+                        headline: match[2].trim()
+                    });
+                }
+            });
+            
+            return frames;
+        }
+        
+        function displayFrames(frames) {
+            framesContainer.innerHTML = "";
+            
+            frames.forEach(frame => {
+                const frameElement = document.createElement('div');
+                frameElement.className = 'frame';
+                
+                const titleElement = document.createElement('div');
+                titleElement.className = 'frame-title';
+                titleElement.textContent = frame.title;
+                
+                const headlineElement = document.createElement('div');
+                headlineElement.textContent = frame.headline;
+                
+                frameElement.appendChild(titleElement);
+                frameElement.appendChild(headlineElement);
+                
+                framesContainer.appendChild(frameElement);
+            });
+        }
+    </script>
+</body>
+</html>
