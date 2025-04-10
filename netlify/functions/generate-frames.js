@@ -203,7 +203,7 @@ ${JSON.stringify(analysis2Json, null, 2)}
 **Instructions:**
 1.  Compare the identified frames, keywords, agent/patient roles, and overall interpretation in Analysis 1 and Analysis 2.
 2.  Highlight key similarities and differences in the framing identified by each analysis.
-3.  Output a headline which has a completely different frame, but the same key information. Please add additional assumed info in [] if required.
+3.  Output a flipped_headline which has a completely different frame, but the same key information. Please add additional assumed info in [] if required. How to flip the headline is upto you, and you do that based on the frame Analysis 1 and Analysis 2.
 4.  Your *entire output* MUST be a single, valid JSON object. Do NOT include any text, explanations, apologies, or markdown formatting outside of the JSON structure.
 
 **Required JSON Output Schema:**
