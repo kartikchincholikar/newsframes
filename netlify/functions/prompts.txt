@@ -1,0 +1,270 @@
+const fetch = require('node-fetch');
+
+exports.handler = async function(event, context) {
+  try {
+    // Only allow POST requests
+    if (event.httpMethod !== 'POST') {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ error: 'Method Not Allowed' })
+      };
+    }
+
+    // Parse the incoming request body
+    const { headline } = JSON.parse(event.body);
+    if (!headline) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Headline is required' })
+      };
+    }
+
+    // Define two system prompts for parallel agents.
+    // You might use slightly different instructions to get varied perspectives.
+    const systemPrompt2 = `You are an expert in semantic news framing analysis. 
+    Your task is to analyze the news headline and decompose it into its underlying semantic frames. 
+    For each frame, identify and output the following structured elements:
+      - [Frame Type]: The cognitive or thematic frame (e.g., Conflict, Human Interest, Responsibility, Economic Consequences, Morality, Progress/Recovery). If not explicitly mentioned, make an assumption and enclose it in [].
+      - [Keywords]: The key words or phrases that signal this frame. If not provided explicitly, assume likely relevant terms and enclose them in [].
+      - [Agent]: The entity performing the action. If not explicitly mentioned, assume one and enclose it in [].
+      - [Action]: The action being performed, reflecting how the headline frames the event. If not explicitly mentioned, assume one and enclose it in [].
+      - [Patient]: The entity affected by the action. If not explicitly mentioned, assume one and enclose it in [].
+      - [Contextual Cues]: Any explicit or implicit indicators of situational, temporal, or socio-political context. If absent, assume and enclose in [].
+    
+    The output should be in a structured JSON format.
+    Example Output:
+    {
+      "input_headline": "Police arrest protest leader in downtown clash",
+      "frames": [
+        {
+          "frame_type": "Responsibility",
+          "keywords": ["arrest", "protest leader", "clash"],
+          "agent": "Police",
+          "action": "arrest",
+          "patient": "protest leader",
+          "contextual_cues": ["downtown", "clash implies conflict"]
+        }
+      ]
+    }
+    
+    Headline: ${headline}`;
+    
+
+    const systemPrompt2 = `You are an advanced semantic news analysis agent with expertise in cognitive linguistics, media studies, and frame analysis. Your task is to analyze a given news text (which may be a headline, excerpt, or full article) to extract and identify the cognitive frames embedded within the narrative. A cognitive frame in this context refers to the implicit or explicit perspective that highlights certain aspects of the news (e.g., conflict, human interest, responsibility, economic consequences, morality, or progress/recovery).
+
+Follow these steps in your analysis:
+
+1. **Input Processing:**
+   - Parse the input text carefully.
+   - Identify and extract key entities, actions, contexts, and linguistic cues (e.g., word choice, metaphors, source attribution).
+
+2. **Frame Identification:**
+   - Identify the cognitive frames present in the input. Consider common frames such as:
+     - **Conflict Frame:** Emphasizes disagreements, clashes, and polarization.
+     - **Human Interest Frame:** Highlights individual stories, emotions, and personal impacts.
+     - **Responsibility/Blame Frame:** Focuses on who is held accountable or responsible.
+     - **Economic Consequences Frame:** Underscores financial impacts or economic ramifications.
+     - **Morality Frame:** Evaluates events from ethical, cultural, or ideological standpoints.
+     - **Progress/Recovery Frame:** Concentrates on solutions, recovery, or improvements.
+   - For each identified frame, determine:
+     - Keywords and phrases that signal the frame.
+     - Linguistic devices (e.g., metaphors, adjectives, active/passive constructions).
+     - The agent-patient relations that may underpin the narrative (i.e., who is doing what to whom).
+
+3. **Contextual Analysis:**
+   - Analyze the broader context provided by the text (situational, temporal, and social/political factors).
+   - Note how the context reinforces the identified frame(s).
+
+4. **Output Format:**
+   - Produce your analysis in a structured JSON format.
+   - The JSON object should contain at least the following keys:
+     - `"input_text"`: The original input text.
+     - `"frames"`: An array of objects, each representing one cognitive frame. Each object should include:
+       - `"frame_type"`: e.g., "Conflict", "Human Interest", etc.
+       - `"keywords"`: A list of words or phrases that signal this frame.
+       - `"linguistic_indicators"`: Descriptive comments on stylistic or grammatical choices (e.g., active/passive voice, metaphors).
+       - `"agent_patient_analysis"`: Details about the roles (agent, patient) in the narrative.
+       - `"contextual_elements"`: Elements of the situational, temporal, or socio-political context that support the frame.
+       - `"summary"`: A concise summary explaining how this frame shapes the narrative.
+     
+   - **Example Output:**
+     ```json
+     {
+       "input_text": "Police arrest protest leader in downtown clash during ongoing unrest.",
+       "frames": [
+         {
+           "frame_type": "Responsibility",
+           "keywords": ["arrest", "protest leader", "clash"],
+           "linguistic_indicators": "Active voice, direct verb usage, and emphasis on official action.",
+           "agent_patient_analysis": {
+             "agent": "Police",
+             "patient": "protest leader"
+           },
+           "contextual_elements": "Mentions of 'downtown' and 'ongoing unrest' suggest a broader political/social context.",
+           "summary": "The frame emphasizes accountability and responsibility by focusing on police action against a protest leader, thus framing the event in a light of law enforcement intervention."
+         }
+       ]
+     }
+     ```
+
+5. **Processing Guidelines:**
+   - Focus only on textual evidence in the provided input.
+   - Avoid assumptions beyond the text.
+   - Ensure clarity and conciseness in the JSON structure.
+   - Do not include additional commentary outside the JSON output.
+
+By following this procedure, you will deliver a cognitive frame analysis that is both systematic and transparent in its methodology.
+
+---
+
+Use the above prompt as your guiding framework. It instructs you to carry out a semantic analysis that uncovers the underlying cognitive frames, and then to package your findings in a clear, structured JSON format. This approach is useful for advanced semantic news analysis systems and provides a replicable method for dissecting news narratives.
+`;
+
+    // Helper function to call the Gemini API for a given prompt.
+    async function callAgent(prompt) {
+      const API_KEY = process.env.GEMINI_API_KEY;
+      const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+      const requestBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024
+        }
+      };
+
+      const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error (parallel call):", errorText);
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content ||
+          !data.candidates[0].content.parts || !data.candidates[0].content.parts[0].text) {
+        console.error("Unexpected API response format:", JSON.stringify(data));
+        throw new Error("Unexpected API response format in parallel call");
+      }
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    // Run the two parallel agents concurrently.
+    const [result1, result2] = await Promise.all([
+      callAgent(systemPrompt1),
+      callAgent(systemPrompt2)
+    ]);
+
+    // Parse the frames from each agent's response.
+    function parseFrames(text) {
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      const frames = [];
+      lines.forEach(line => {
+        const match = line.match(/^(.+?):\s(.+)$/);
+        if (match) {
+          frames.push({
+            title: match[1].trim(),
+            headline: match[2].trim()
+          });
+        }
+      });
+      return frames;
+    }
+
+    const frames1 = parseFrames(result1);
+    const frames2 = parseFrames(result2);
+
+    // Combine the frames; you can tailor the merging logic as needed.
+    // In this example, we simply concatenate the two lists.
+    const combinedFrames = [...frames1, ...frames2];
+
+    // Construct a new prompt for the sequential call using the combined results.
+    const sequentialPrompt = `
+You are an expert synthesizer. Based on the following frames generated from two different analyses:
+${combinedFrames.map(frame => `${frame.title}: ${frame.headline}`).join('\n')}
+Provide a summary analysis that highlights the key framing differences between the responses. 
+Your output should be a concise paragraph comparing and contrasting the frames.`;
+
+    // Sequential call: send the combined frames for further synthesis.
+    const API_KEY = process.env.GEMINI_API_KEY;
+    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+    const sequentialRequestBody = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: sequentialPrompt }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024
+      }
+    };
+
+    const sequentialResponse = await fetch(`${API_URL}?key=${API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(sequentialRequestBody)
+    });
+
+    if (!sequentialResponse.ok) {
+      const errorText = await sequentialResponse.text();
+      console.error("API Error (sequential call):", errorText);
+      throw new Error(`Sequential API request failed with status ${sequentialResponse.status}: ${errorText}`);
+    }
+
+    const sequentialData = await sequentialResponse.json();
+    if (!sequentialData.candidates || !sequentialData.candidates[0] || !sequentialData.candidates[0].content ||
+        !sequentialData.candidates[0].content.parts || !sequentialData.candidates[0].content.parts[0].text) {
+      console.error("Unexpected sequential API response format:", JSON.stringify(sequentialData));
+      throw new Error("Unexpected sequential API response format");
+    }
+    const finalOutput = sequentialData.candidates[0].content.parts[0].text;
+
+    // Return both the combined frames and the summary analysis.
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*', // For testing
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
+      body: JSON.stringify({ 
+        combinedFrames,
+        summary: finalOutput 
+      })
+    };
+
+  } catch (error) {
+    console.error('Error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*', // For testing
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
+      body: JSON.stringify({ 
+        error: 'Internal Server Error', 
+        message: error.message 
+      })
+    };
+  }
+};
