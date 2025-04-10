@@ -428,7 +428,7 @@
                  if (resultData.synthesis.error) { // Check if synthesis itself had an error (e.g., model failed)
                      synthesisContainer.innerHTML += `<p class="message error"><strong>Synthesis Error:</strong> ${escapeHtml(resultData.synthesis.error)}</p>`;
                  } else {
-                     const summary = escapeHtml(resultData.synthesis.comparison_summary || 'N/A');
+                     const summary = escapeHtml(resultData.synthesis.flipped_headline || 'N/A');
                      const similaritiesList = Array.isArray(resultData.synthesis.key_similarities) && resultData.synthesis.key_similarities.length > 0
                          ? resultData.synthesis.key_similarities.map(s => `<li>${escapeHtml(s)}</li>`).join('')
                          : '<li>None listed or N/A</li>';
@@ -437,7 +437,7 @@
                          : '<li>None listed or N/A</li>';
 
                     let synthesisContent = `
-                        <p><strong>Comparison Summary:</strong> ${summary}</p>
+                        <p><strong>Flipped Headline:</strong> ${summary}</p>
                         <p><strong>Key Similarities:</strong></p>
                         <ul>${similaritiesList}</ul>
                         <p><strong>Key Differences:</strong></p>

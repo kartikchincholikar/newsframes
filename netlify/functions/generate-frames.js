@@ -210,7 +210,7 @@ ${JSON.stringify(analysis2Json, null, 2)}
 \`\`\`json
 {
   "headline": "${headline}",
-  "flipped-headline": "the same information presented in an opposite way",
+  "flipped_headline": "the same information presented in an opposite way",
   "key_similarities": [
     "string (Description of a similarity)",
     "..."
