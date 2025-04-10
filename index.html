@@ -3,226 +3,461 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Frames</title>
+    <title>News Frames Analysis</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 900px; /* Increased width slightly */
+            margin: 20px auto; /* Added top/bottom margin */
             padding: 20px;
-            background-color: #f9f9f9;
+            background-color: #f4f7f6; /* Softer background */
         }
-        
+
         .container {
             background-color: white;
             border-radius: 10px;
             padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
         }
-        
+
         h1 {
             color: #2c3e50;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
-        
+         h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 5px;
+        }
+         h3 {
+             color: #2980b9;
+             margin-top: 20px;
+             margin-bottom: 10px;
+         }
+          h4 {
+             color: #16a085;
+             margin-top: 10px;
+             margin-bottom: 5px;
+         }
+
         .description {
             margin-bottom: 30px;
             text-align: center;
             color: #555;
+            font-size: 1.1em;
         }
-        
+
         .input-group {
             margin-bottom: 20px;
+            display: flex; /* Align textarea and button nicely */
+            flex-direction: column;
+            align-items: center;
         }
-        
+
         textarea {
-            width: 100%;
+            width: 95%; /* Slightly less than 100% */
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid #ccc; /* Lighter border */
             border-radius: 6px;
             font-size: 16px;
             resize: vertical;
-            min-height: 80px;
+            min-height: 70px;
             margin-bottom: 15px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
         }
-        
+
+        .button-container {
+            display: flex;
+            gap: 10px; /* Space between buttons */
+        }
+
         button {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px; /* Slightly smaller padding */
             border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
-            display: block;
-            margin: 0 auto;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, transform 0.1s;
+            display: inline-block; /* Allow side-by-side */
+            /* margin: 0 auto; */ /* Removed */
         }
-        
+
         button:hover {
             background-color: #2980b9;
         }
-        
+         button:active {
+             transform: scale(0.98); /* Click effect */
+         }
+
         button:disabled {
-            background-color: #95a5a6;
+            background-color: #bdc3c7; /* Lighter disabled color */
             cursor: not-allowed;
         }
-        
+
+        #reset-btn {
+             background-color: #e74c3c;
+        }
+         #reset-btn:hover {
+             background-color: #c0392b;
+         }
+
+
         .results {
             margin-top: 30px;
-            display: none;
+            display: none; /* Hide initially */
+            border-top: 1px solid #eee;
+            padding-top: 20px;
         }
-        
+
+        .analysis-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #fdfefe;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+        }
+
+
         .frame {
             background-color: #f8f9fa;
             padding: 15px;
             border-radius: 6px;
             margin-bottom: 15px;
             border-left: 4px solid #3498db;
+            font-size: 0.95em;
         }
-        
-        .frame-title {
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #2c3e50;
+        .frame p {
+            margin: 5px 0;
         }
-        
+        .frame strong {
+            color: #34495e;
+        }
+
+        /* Specific style for Analysis 2 frames */
+         .frame-analysis-2 {
+             border-left-color: #9b59b6; /* Different color */
+         }
+
+        .synthesis-section p, .synthesis-section ul {
+             margin: 10px 0;
+         }
+         .synthesis-section ul {
+             padding-left: 20px;
+         }
+         .synthesis-section li {
+             margin-bottom: 5px;
+         }
+
         .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #3498db; /* Blue */
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 2s linear infinite;
-            margin: 20px auto;
-            display: none;
+            width: 40px;
+            height: 40px;
+            animation: spin 1.5s linear infinite;
+            margin: 30px auto;
+            display: none; /* Hidden by default */
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        .error {
-            color: #e74c3c;
+
+        .message { /* Generic message styling */
             text-align: center;
             margin-top: 15px;
-            display: none;
+            padding: 10px;
+            border-radius: 4px;
+            display: none; /* Hidden by default */
         }
+        .error {
+            color: #c0392b;
+            background-color: #f9eaea;
+            border: 1px solid #e74c3c;
+        }
+         .warning {
+            color: #d35400;
+            background-color: #fef5e7;
+            border: 1px solid #f39c12;
+        }
+         .info {
+             color: #2980b9;
+             background-color: #eaf2f8;
+             border: 1px solid #aed6f1;
+         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>News Frames</h1>
+        <h1>News Frame Analysis</h1>
         <p class="description">
-            See how the same news headline can be framed differently based on perspective and bias.
-            Enter a headline below and see how it might appear across different sources.
+            Enter a news headline to see how different AI agents might analyze its underlying cognitive frames and compare their findings.
         </p>
-        
+
         <div class="input-group">
-            <textarea id="headline-input" placeholder="Enter a news headline here..."></textarea>
-            <button id="generate-btn">Get News Frames</button>
-            <button id="reset-btn" style="display: none; background-color: #e74c3c;">Reset</button>
+            <textarea id="headline-input" placeholder="Enter a news headline here..." rows="3"></textarea>
+            <div class="button-container">
+                 <button id="generate-btn">Analyze Frames</button>
+                 <button id="reset-btn" style="display: none;">Reset</button>
+            </div>
         </div>
-        
+
         <div id="loader" class="loader"></div>
-        <div id="error-message" class="error"></div>
-        
+        <div id="error-message" class="message error"></div> <!-- General error display -->
+        <div id="info-message" class="message info"></div> <!-- For info like 'no frames found' -->
+
+        <!-- Results Area -->
         <div id="results" class="results">
-            <h2>Different Frames:</h2>
-            <div id="frames-container"></div>
+             <h2>Analysis Results</h2>
+
+             <!-- Analysis 1 Output -->
+             <div id="analysis-1-output" class="analysis-section">
+                 <h3>Analysis 1 (Detailed)</h3>
+                 <!-- Content dynamically added here -->
+             </div>
+
+             <!-- Analysis 2 Output -->
+             <div id="analysis-2-output" class="analysis-section">
+                 <h3>Analysis 2 (Simplified)</h3>
+                 <!-- Content dynamically added here -->
+             </div>
+
+             <!-- Synthesis Output -->
+             <div id="synthesis-output" class="analysis-section synthesis-section">
+                 <h3>Synthesis & Comparison</h3>
+                 <!-- Content dynamically added here -->
+             </div>
         </div>
     </div>
 
     <script>
+        // Get references to DOM elements
         const headlineInput = document.getElementById('headline-input');
         const generateBtn = document.getElementById('generate-btn');
         const resetBtn = document.getElementById('reset-btn');
         const resultsContainer = document.getElementById('results');
-        const framesContainer = document.getElementById('frames-container');
         const loader = document.getElementById('loader');
         const errorMessage = document.getElementById('error-message');
-        
+        const infoMessage = document.getElementById('info-message');
+
+        // Output containers
+        const analysis1Container = document.getElementById('analysis-1-output');
+        const analysis2Container = document.getElementById('analysis-2-output');
+        const synthesisContainer = document.getElementById('synthesis-output');
+
+        // Helper function to escape HTML for security
+        function escapeHtml(unsafe) {
+            if (unsafe === null || typeof unsafe === 'undefined') {
+                return '';
+            }
+            // Ensure it's a string before replacing
+            return unsafe
+                .toString()
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, "\"")
+                .replace(/'/g, "'");
+        }
+
+        // Function to display messages (error, warning, info)
+        function showMessage(element, text, type = 'error') {
+             element.textContent = text;
+             element.className = `message ${type}`; // Set class for styling
+             element.style.display = 'block';
+        }
+
+         // Function to hide messages
+         function hideMessages() {
+             errorMessage.style.display = 'none';
+             infoMessage.style.display = 'none';
+         }
+
+
+        // Event Listener for Generate Button
         generateBtn.addEventListener('click', async () => {
             const headline = headlineInput.value.trim();
-            
+
             if (!headline) {
-                errorMessage.textContent = "Please enter a headline first.";
-                errorMessage.style.display = "block";
+                showMessage(errorMessage, "Please enter a headline first.", "error");
                 return;
             }
-            
-            // Show loader and hide error
+
+            // UI updates for loading state
+            hideMessages(); // Hide previous messages
             loader.style.display = "block";
-            errorMessage.style.display = "none";
             generateBtn.disabled = true;
-            
+            resultsContainer.style.display = "none"; // Hide old results
+            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Reset headers
+            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
+            synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
+
+
             try {
-                // Call our Netlify function instead of directly calling Gemini API
-                const response = await fetch('/.netlify/functions/generate-frames', {
+                // Call the Netlify function (make sure the path is correct)
+                const response = await fetch('/.netlify/functions/generate-frames', { // Adjusted path
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ headline })
                 });
-                
+
+                const data = await response.json(); // Try to parse JSON regardless of status
+
                 if (!response.ok) {
-                    throw new Error(`Request failed with status ${response.status}`);
+                    // Use error message from backend JSON if available, otherwise use status text
+                    const errorText = data?.message || data?.error || `Request failed with status ${response.status}`;
+                    throw new Error(errorText);
                 }
-                
-                const data = await response.json();
-                displayFrames(data.frames);
-                
+
+                // Process and display the structured results
+                displayResults(data);
+
                 // Show results and reset button, hide generate button
                 resultsContainer.style.display = "block";
-                resetBtn.style.display = "block";
-                generateBtn.style.display = "none";
+                resetBtn.style.display = "inline-block"; // Use inline-block now
+                // generateBtn.style.display = "none"; // Keep Generate visible but disabled until Reset? Or hide:
+                generateBtn.style.display = 'none';
+
+
             } catch (error) {
-                errorMessage.textContent = "Error generating news frames. Please try again.";
-                errorMessage.style.display = "block";
-                console.error("Error:", error);
+                showMessage(errorMessage, `Error: ${error.message}`, "error");
+                console.error("Error during fetch or processing:", error);
             } finally {
                 loader.style.display = "none";
-                generateBtn.disabled = false;
+                generateBtn.disabled = false; // Re-enable button even on error
             }
         });
-        
+
+        // Event Listener for Reset Button
         resetBtn.addEventListener('click', () => {
-            // Clear input and results
+            // Clear input and results containers
             headlineInput.value = "";
-            framesContainer.innerHTML = "";
-            
+            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Keep headers
+            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
+            synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
+
             // Hide results and reset button, show generate button
             resultsContainer.style.display = "none";
             resetBtn.style.display = "none";
-            generateBtn.style.display = "block";
-            errorMessage.style.display = "none";
+            generateBtn.style.display = "inline-block"; // Use inline-block now
+             generateBtn.disabled = false; // Ensure Generate is enabled
+            hideMessages(); // Hide any error/info messages
         });
-        
-        function displayFrames(frames) {
-            framesContainer.innerHTML = "";
-            
-            frames.forEach(frame => {
-                const frameElement = document.createElement('div');
-                frameElement.className = 'frame';
-                
-                const titleElement = document.createElement('div');
-                titleElement.className = 'frame-title';
-                titleElement.textContent = frame.title;
-                
-                const headlineElement = document.createElement('div');
-                headlineElement.textContent = frame.headline;
-                
-                frameElement.appendChild(titleElement);
-                frameElement.appendChild(headlineElement);
-                
-                framesContainer.appendChild(frameElement);
-            });
+
+        // Function to Display the Structured Results
+        function displayResults(resultData) {
+            console.log("Data received for display:", resultData); // Log received data
+
+             hideMessages(); // Clear any previous general messages
+
+            // --- Process and Display Analysis 1 ---
+            if (resultData.analysis_1) {
+                if (resultData.analysis_1.error) {
+                    // Agent 1 failed, display the error message within its section
+                    analysis1Container.innerHTML += `<p class="message error"><strong>Analysis 1 Error:</strong> ${escapeHtml(resultData.analysis_1.error)}</p>`;
+                } else if (Array.isArray(resultData.analysis_1.frames)) { // Check if frames is an array
+                    if (resultData.analysis_1.frames.length > 0) {
+                        resultData.analysis_1.frames.forEach((frame, index) => {
+                            const frameElement = document.createElement('div');
+                            frameElement.className = 'frame frame-analysis-1'; // Added specific class
+                            frameElement.innerHTML = `
+                                <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
+                                <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
+                                <p><strong>Linguistic Indicators:</strong> ${escapeHtml(frame.linguistic_indicators || 'N/A')}</p>
+                                <p><strong>Agent:</strong> ${escapeHtml(frame.agent_patient_analysis?.agent || 'N/A')}</p>
+                                <p><strong>Patient:</strong> ${escapeHtml(frame.agent_patient_analysis?.patient || 'N/A')}</p>
+                                <p><strong>Context:</strong> ${escapeHtml(frame.contextual_elements || 'N/A')}</p>
+                                <p><strong>Summary:</strong> ${escapeHtml(frame.summary || 'N/A')}</p>
+                            `;
+                            analysis1Container.appendChild(frameElement);
+                        });
+                    } else {
+                         analysis1Container.innerHTML += '<p class="message info">No frames identified by Analysis 1.</p>';
+                    }
+                } else {
+                    // analysis_1 exists, no error, but 'frames' is missing or not an array
+                    analysis1Container.innerHTML += `<p class="message warning">Warning: Analysis 1 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_1, null, 2))}</pre>`;
+                     console.warn("Analysis 1 data structure issue:", resultData.analysis_1);
+                }
+            } else {
+                analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
+            }
+
+            // --- Process and Display Analysis 2 ---
+             if (resultData.analysis_2) {
+                if (resultData.analysis_2.error) {
+                    analysis2Container.innerHTML += `<p class="message error"><strong>Analysis 2 Error:</strong> ${escapeHtml(resultData.analysis_2.error)}</p>`;
+                } else if (Array.isArray(resultData.analysis_2.frames)) {
+                     if (resultData.analysis_2.frames.length > 0) {
+                        resultData.analysis_2.frames.forEach((frame, index) => {
+                            const frameElement = document.createElement('div');
+                            frameElement.className = 'frame frame-analysis-2'; // Added specific class
+                            frameElement.innerHTML = `
+                                <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
+                                <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
+                                <p><strong>Agent:</strong> ${escapeHtml(frame.agent || 'N/A')}</p>
+                                <p><strong>Action:</strong> ${escapeHtml(frame.action || 'N/A')}</p>
+                                <p><strong>Patient:</strong> ${escapeHtml(frame.patient || 'N/A')}</p>
+                                <p><strong>Context Cues:</strong> ${escapeHtml(Array.isArray(frame.contextual_cues) ? frame.contextual_cues.join(', ') : 'N/A')}</p>
+                            `;
+                            analysis2Container.appendChild(frameElement);
+                        });
+                     } else {
+                         analysis2Container.innerHTML += '<p class="message info">No frames identified by Analysis 2.</p>';
+                     }
+                } else {
+                    analysis2Container.innerHTML += `<p class="message warning">Warning: Analysis 2 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_2, null, 2))}</pre>`;
+                    console.warn("Analysis 2 data structure issue:", resultData.analysis_2);
+                }
+            } else {
+                analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
+            }
+
+            // --- Process and Display Synthesis ---
+            if (resultData.synthesis) {
+                 if (resultData.synthesis.error) { // Check if synthesis itself had an error (e.g., model failed)
+                     synthesisContainer.innerHTML += `<p class="message error"><strong>Synthesis Error:</strong> ${escapeHtml(resultData.synthesis.error)}</p>`;
+                 } else {
+                     const summary = escapeHtml(resultData.synthesis.comparison_summary || 'N/A');
+                     const similaritiesList = Array.isArray(resultData.synthesis.key_similarities) && resultData.synthesis.key_similarities.length > 0
+                         ? resultData.synthesis.key_similarities.map(s => `<li>${escapeHtml(s)}</li>`).join('')
+                         : '<li>None listed or N/A</li>';
+                     const differencesList = Array.isArray(resultData.synthesis.key_differences) && resultData.synthesis.key_differences.length > 0
+                         ? resultData.synthesis.key_differences.map(d => `<li>${escapeHtml(d)}</li>`).join('')
+                         : '<li>None listed or N/A</li>';
+
+                    let synthesisContent = `
+                        <p><strong>Comparison Summary:</strong> ${summary}</p>
+                        <p><strong>Key Similarities:</strong></p>
+                        <ul>${similaritiesList}</ul>
+                        <p><strong>Key Differences:</strong></p>
+                        <ul>${differencesList}</ul>
+                     `;
+
+                     // Add notes if agents had errors during their generation
+                     if (resultData.synthesis.agent1_had_error) {
+                         synthesisContent += '<p class="message warning">Note: Analysis 1 encountered an error during its generation process.</p>';
+                     }
+                     if (resultData.synthesis.agent2_had_error) {
+                         synthesisContent += '<p class="message warning">Note: Analysis 2 encountered an error during its generation process.</p>';
+                     }
+                     synthesisContainer.innerHTML += synthesisContent;
+                 }
+            } else {
+                 synthesisContainer.innerHTML += '<p class="message error">Error: No synthesis data returned.</p>';
+            }
         }
+
     </script>
 </body>
 </html>
