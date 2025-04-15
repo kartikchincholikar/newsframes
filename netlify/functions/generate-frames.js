@@ -1,3 +1,41 @@
+process.env.AWS_ACCESS_KEY_ID = process.env.ACCESS_KEY_ID;
+process.env.AWS_SECRET_ACCESS_KEY = process.env.SECRET_ACCESS_KEY;
+process.env.AWS_REGION = process.env.REGION;
+
+const AWS = require('aws-sdk');
+AWS.config.update({ region: process.env.AWS_REGION });
+
+// Initialize the DocumentClient for DynamoDB
+const docClient = new AWS.DynamoDB.DocumentClient();
+
+const { v4: uuidv4 } = require('uuid'); // Use a UUID library for unique IDs
+
+async function saveHeadlineData({ input_headline, flipped_headline, human_flipped_headline = '' }) {
+  const params = {
+    TableName: 'NewsFrames',
+    Item: {
+      headline_id: uuidv4(),      // Generate unique identifier
+      input_headline,
+      flipped_headline,
+      human_flipped_headline,     // Initially empty
+      created_at: new Date().toISOString() // Optional timestamp
+    }
+  };
+
+  try {
+    await docClient.put(params).promise();
+    console.log("Record successfully saved.");
+  } catch (err) {
+    console.error("Error saving record:", err);
+    throw err;
+  }
+}
+
+
+/////////////////////////////////////////////////
+
+
+
 const fetch = require('node-fetch');
 
 // Helper function to call the Gemini API and expect structured JSON output
@@ -230,6 +268,12 @@ Generate the comparison JSON object.`;
     // This call also expects structured JSON output.
     const synthesisResultJson = await callAgent(sequentialPrompt, 'Agent 3 (Synthesis)');
 
+    await saveHeadlineData({
+      input_headline: headline,           // Provided by the client
+      flipped_headline: synthesisResultJson.flipped_headline,
+      human_flipped_headline: ''          // This will be annotated manually later
+    });
+
     // Return the structured results from all agents
     return {
       statusCode: 200,
@@ -239,8 +283,8 @@ Generate the comparison JSON object.`;
         'Access-Control-Allow-Headers': 'Content-Type'
       },
       body: JSON.stringify({
-        // analysis_1: analysis1Json, // Contains either parsed JSON or error object
-        // analysis_2: analysis2Json, // Contains either parsed JSON or error object
+        analysis_1: analysis1Json, // Contains either parsed JSON or error object
+        analysis_2: analysis2Json, // Contains either parsed JSON or error object
         synthesis: synthesisResultJson // Contains parsed JSON from synthesis agent
       })
     };

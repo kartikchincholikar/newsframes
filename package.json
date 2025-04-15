@@ -18,6 +18,7 @@
   "homepage": "https://github.com/kartikchincholikar/newsframes#readme",
   "description": "",
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
     "node-fetch": "^2.7.0"
   }
 }
