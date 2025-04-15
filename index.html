@@ -298,8 +298,8 @@
             loader.style.display = "block";
             generateBtn.disabled = true;
             resultsContainer.style.display = "none"; // Hide old results
-            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Reset headers
-            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
+            // analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Reset headers
+            // analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
             synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
 
 
@@ -344,8 +344,8 @@
         resetBtn.addEventListener('click', () => {
             // Clear input and results containers
             headlineInput.value = "";
-            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Keep headers
-            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
+            // analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Keep headers
+            // analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
             synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
 
             // Hide results and reset button, show generate button
@@ -424,8 +424,9 @@
             // } else {
             //     
             // }
-            analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
-            analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
+
+            // analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
+            // analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
 
             // --- Process and Display Synthesis ---
             if (resultData.synthesis) {
