@@ -239,8 +239,8 @@ Generate the comparison JSON object.`;
         'Access-Control-Allow-Headers': 'Content-Type'
       },
       body: JSON.stringify({
-        analysis_1: analysis1Json, // Contains either parsed JSON or error object
-        analysis_2: analysis2Json, // Contains either parsed JSON or error object
+        // analysis_1: analysis1Json, // Contains either parsed JSON or error object
+        // analysis_2: analysis2Json, // Contains either parsed JSON or error object
         synthesis: synthesisResultJson // Contains parsed JSON from synthesis agent
       })
     };
