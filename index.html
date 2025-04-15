@@ -216,12 +216,26 @@
 
         <!-- Results Area -->
         <div id="results" class="results">
-             <h2>Flipped Headline</h2>
+             <h2>Analysis Results</h2>
 
             <!-- Synthesis Output -->
                 <div id="synthesis-output" class="analysis-section synthesis-section">
+                <h3>Synthesis & Comparison</h3>
                 <!-- Content dynamically added here -->
             </div>
+
+             <!-- Analysis 1 Output -->
+             <div id="analysis-1-output" class="analysis-section">
+                 <h3>Analysis 1 (Detailed)</h3>
+                 <!-- Content dynamically added here -->
+             </div>
+
+             <!-- Analysis 2 Output -->
+             <div id="analysis-2-output" class="analysis-section">
+                 <h3>Analysis 2 (Simplified)</h3>
+                 <!-- Content dynamically added here -->
+             </div>
+
 
         </div>
     </div>
@@ -237,7 +251,7 @@
         const infoMessage = document.getElementById('info-message');
 
         // Output containers
-        const Container = document.getElementById('analysis-1-output');
+        const analysis1Container = document.getElementById('analysis-1-output');
         const analysis2Container = document.getElementById('analysis-2-output');
         const synthesisContainer = document.getElementById('synthesis-output');
 
@@ -284,8 +298,8 @@
             loader.style.display = "block";
             generateBtn.disabled = true;
             resultsContainer.style.display = "none"; // Hide old results
-            // analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Reset headers
-            // analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
+            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Reset headers
+            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
             synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
 
 
@@ -330,8 +344,8 @@
         resetBtn.addEventListener('click', () => {
             // Clear input and results containers
             headlineInput.value = "";
-            // analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Keep headers
-            // analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
+            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Keep headers
+            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
             synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
 
             // Hide results and reset button, show generate button
@@ -349,70 +363,67 @@
              hideMessages(); // Clear any previous general messages
 
             // --- Process and Display Analysis 1 ---
-            // if (resultData.analysis_1) {
-            //     if (resultData.analysis_1.error) {
-            //         // Agent 1 failed, display the error message within its section
-            //         analysis1Container.innerHTML += `<p class="message error"><strong>Analysis 1 Error:</strong> ${escapeHtml(resultData.analysis_1.error)}</p>`;
-            //     } else if (Array.isArray(resultData.analysis_1.frames)) { // Check if frames is an array
-            //         if (resultData.analysis_1.frames.length > 0) {
-            //             resultData.analysis_1.frames.forEach((frame, index) => {
-            //                 const frameElement = document.createElement('div');
-            //                 frameElement.className = 'frame frame-analysis-1'; // Added specific class
-            //                 frameElement.innerHTML = `
-            //                     <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
-            //                     <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
-            //                     <p><strong>Linguistic Indicators:</strong> ${escapeHtml(frame.linguistic_indicators || 'N/A')}</p>
-            //                     <p><strong>Agent:</strong> ${escapeHtml(frame.agent_patient_analysis?.agent || 'N/A')}</p>
-            //                     <p><strong>Patient:</strong> ${escapeHtml(frame.agent_patient_analysis?.patient || 'N/A')}</p>
-            //                     <p><strong>Context:</strong> ${escapeHtml(frame.contextual_elements || 'N/A')}</p>
-            //                     <p><strong>Summary:</strong> ${escapeHtml(frame.summary || 'N/A')}</p>
-            //                 `;
-            //                 analysis1Container.appendChild(frameElement);
-            //             });
-            //         } else {
-            //              analysis1Container.innerHTML += '<p class="message info">No frames identified by Analysis 1.</p>';
-            //         }
-            //     } else {
-            //         // analysis_1 exists, no error, but 'frames' is missing or not an array
-            //         analysis1Container.innerHTML += `<p class="message warning">Warning: Analysis 1 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_1, null, 2))}</pre>`;
-            //          console.warn("Analysis 1 data structure issue:", resultData.analysis_1);
-            //     }
-            // } else {
-            //     
-            // }
+            if (resultData.analysis_1) {
+                if (resultData.analysis_1.error) {
+                    // Agent 1 failed, display the error message within its section
+                    analysis1Container.innerHTML += `<p class="message error"><strong>Analysis 1 Error:</strong> ${escapeHtml(resultData.analysis_1.error)}</p>`;
+                } else if (Array.isArray(resultData.analysis_1.frames)) { // Check if frames is an array
+                    if (resultData.analysis_1.frames.length > 0) {
+                        resultData.analysis_1.frames.forEach((frame, index) => {
+                            const frameElement = document.createElement('div');
+                            frameElement.className = 'frame frame-analysis-1'; // Added specific class
+                            frameElement.innerHTML = `
+                                <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
+                                <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
+                                <p><strong>Linguistic Indicators:</strong> ${escapeHtml(frame.linguistic_indicators || 'N/A')}</p>
+                                <p><strong>Agent:</strong> ${escapeHtml(frame.agent_patient_analysis?.agent || 'N/A')}</p>
+                                <p><strong>Patient:</strong> ${escapeHtml(frame.agent_patient_analysis?.patient || 'N/A')}</p>
+                                <p><strong>Context:</strong> ${escapeHtml(frame.contextual_elements || 'N/A')}</p>
+                                <p><strong>Summary:</strong> ${escapeHtml(frame.summary || 'N/A')}</p>
+                            `;
+                            analysis1Container.appendChild(frameElement);
+                        });
+                    } else {
+                         analysis1Container.innerHTML += '<p class="message info">No frames identified by Analysis 1.</p>';
+                    }
+                } else {
+                    // analysis_1 exists, no error, but 'frames' is missing or not an array
+                    analysis1Container.innerHTML += `<p class="message warning">Warning: Analysis 1 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_1, null, 2))}</pre>`;
+                     console.warn("Analysis 1 data structure issue:", resultData.analysis_1);
+                }
+            } else {
+                analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
+            }
 
-            // // --- Process and Display Analysis 2 ---
-            //  if (resultData.analysis_2) {
-            //     if (resultData.analysis_2.error) {
-            //         analysis2Container.innerHTML += `<p class="message error"><strong>Analysis 2 Error:</strong> ${escapeHtml(resultData.analysis_2.error)}</p>`;
-            //     } else if (Array.isArray(resultData.analysis_2.frames)) {
-            //          if (resultData.analysis_2.frames.length > 0) {
-            //             resultData.analysis_2.frames.forEach((frame, index) => {
-            //                 const frameElement = document.createElement('div');
-            //                 frameElement.className = 'frame frame-analysis-2'; // Added specific class
-            //                 frameElement.innerHTML = `
-            //                     <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
-            //                     <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
-            //                     <p><strong>Agent:</strong> ${escapeHtml(frame.agent || 'N/A')}</p>
-            //                     <p><strong>Action:</strong> ${escapeHtml(frame.action || 'N/A')}</p>
-            //                     <p><strong>Patient:</strong> ${escapeHtml(frame.patient || 'N/A')}</p>
-            //                     <p><strong>Context Cues:</strong> ${escapeHtml(Array.isArray(frame.contextual_cues) ? frame.contextual_cues.join(', ') : 'N/A')}</p>
-            //                 `;
-            //                 analysis2Container.appendChild(frameElement);
-            //             });
-            //          } else {
-            //              analysis2Container.innerHTML += '<p class="message info">No frames identified by Analysis 2.</p>';
-            //          }
-            //     } else {
-            //         analysis2Container.innerHTML += `<p class="message warning">Warning: Analysis 2 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_2, null, 2))}</pre>`;
-            //         console.warn("Analysis 2 data structure issue:", resultData.analysis_2);
-            //     }
-            // } else {
-            //     
-            // }
-
-            // analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
-            // analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
+            // --- Process and Display Analysis 2 ---
+             if (resultData.analysis_2) {
+                if (resultData.analysis_2.error) {
+                    analysis2Container.innerHTML += `<p class="message error"><strong>Analysis 2 Error:</strong> ${escapeHtml(resultData.analysis_2.error)}</p>`;
+                } else if (Array.isArray(resultData.analysis_2.frames)) {
+                     if (resultData.analysis_2.frames.length > 0) {
+                        resultData.analysis_2.frames.forEach((frame, index) => {
+                            const frameElement = document.createElement('div');
+                            frameElement.className = 'frame frame-analysis-2'; // Added specific class
+                            frameElement.innerHTML = `
+                                <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
+                                <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
+                                <p><strong>Agent:</strong> ${escapeHtml(frame.agent || 'N/A')}</p>
+                                <p><strong>Action:</strong> ${escapeHtml(frame.action || 'N/A')}</p>
+                                <p><strong>Patient:</strong> ${escapeHtml(frame.patient || 'N/A')}</p>
+                                <p><strong>Context Cues:</strong> ${escapeHtml(Array.isArray(frame.contextual_cues) ? frame.contextual_cues.join(', ') : 'N/A')}</p>
+                            `;
+                            analysis2Container.appendChild(frameElement);
+                        });
+                     } else {
+                         analysis2Container.innerHTML += '<p class="message info">No frames identified by Analysis 2.</p>';
+                     }
+                } else {
+                    analysis2Container.innerHTML += `<p class="message warning">Warning: Analysis 2 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_2, null, 2))}</pre>`;
+                    console.warn("Analysis 2 data structure issue:", resultData.analysis_2);
+                }
+            } else {
+                analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
+            }
 
             // --- Process and Display Synthesis ---
             if (resultData.synthesis) {
@@ -429,6 +440,10 @@
 
                     let synthesisContent = `
                         <p><strong>Flipped Headline:</strong> ${summary}</p>
+                        <p><strong>Key Similarities:</strong></p>
+                        <ul>${similaritiesList}</ul>
+                        <p><strong>Key Differences:</strong></p>
+                        <ul>${differencesList}</ul>
                      `;
 
                      // Add notes if agents had errors during their generation
