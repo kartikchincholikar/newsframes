@@ -392,7 +392,7 @@
             //          console.warn("Analysis 1 data structure issue:", resultData.analysis_1);
             //     }
             // } else {
-            //     analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
+            //     
             // }
 
             // // --- Process and Display Analysis 2 ---
@@ -422,8 +422,10 @@
             //         console.warn("Analysis 2 data structure issue:", resultData.analysis_2);
             //     }
             // } else {
-            //     analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
+            //     
             // }
+            analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
+            analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
 
             // --- Process and Display Synthesis ---
             if (resultData.synthesis) {
