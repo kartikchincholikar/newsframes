@@ -1,9 +1,13 @@
-process.env.AWS_ACCESS_KEY_ID = process.env.ACCESS_KEY_ID;
-process.env.AWS_SECRET_ACCESS_KEY = process.env.SECRET_ACCESS_KEY;
-process.env.AWS_REGION = process.env.REGION;
+// process.env.AWS_ACCESS_KEY_ID = process.env.ACCESS_KEY_ID;
+// process.env.AWS_SECRET_ACCESS_KEY = process.env.SECRET_ACCESS_KEY;
+// process.env.AWS_REGION = process.env.REGION;
 
 const AWS = require('aws-sdk');
-AWS.config.update({ region: process.env.AWS_REGION });
+AWS.config.update({
+  accessKeyId: process.env.ACCESS_KEY_ID,
+  secretAccessKey: process.env.SECRET_ACCESS_KEY,
+  region: process.env.REGION,
+});
 
 // Initialize the DocumentClient for DynamoDB
 const docClient = new AWS.DynamoDB.DocumentClient();
