@@ -254,15 +254,20 @@ Original: "${headline}"` }
     ];
 
     const synthesis = await callModel(messages3, 'gemini-1.5-flash-latest');
-    
-    if (!synthesis || !synthesis.flipped_headline) {
-      throw new Error('Invalid synthesis result');
+
+    // Replace the validation:
+    if (!synthesis) {
+      throw new Error('Empty synthesis result');
     }
 
-    // Save to DynamoDB
+    // Use optional chaining and fallback for flipped_headline
+    const flippedHeadline = synthesis.flipped_headline || 
+                            (typeof synthesis === 'string' ? synthesis : 'Alternative perspective unavailable');
+
+    // Save to DynamoDB with the extracted headline
     await saveHeadlineData({ 
       input_headline: headline, 
-      flipped_headline: synthesis.flipped_headline 
+      flipped_headline: flippedHeadline 
     });
 
     return {
