@@ -263,12 +263,12 @@
             // Ensure it's a string before replacing
             return unsafe
                 .toString()
-                .replace(/&/g, "&")
-                .replace(/</g, "<")
-                .replace(/>/g, ">")
-                .replace(/"/g, "\"")
-                .replace(/'/g, "'");
-        }
+                    .replace(/&/g, "&")  // Replace & with &
+                    .replace(/</g, "<")   // Replace < with <
+                    .replace(/>/g, ">")   // Replace > with >
+                    .replace(/"/g, "\"") // Replace " with "
+                    .replace(/'/g, "'"); // Replace ' with '
+                }
 
         // Function to display messages (error, warning, info)
         function showMessage(element, text, type = 'error') {

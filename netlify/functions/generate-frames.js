@@ -9,16 +9,56 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch');
 
-// Improved model call function with proper error handling
+/**
+ * Attempts to extract and parse a JSON object from a string,
+ * even if surrounded by other text or markdown fences.
+ *
+ * @param {string} text The raw text potentially containing JSON.
+ * @returns {object | null} The parsed JSON object or null if parsing fails.
+ */
+function extractAndParseJson(text) {
+    if (!text || typeof text !== 'string') {
+        return null;
+    }
+
+    // 1. Remove potential markdown fences and trim whitespace
+    let cleanedText = text.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '').trim();
+
+    // 2. Find the first opening brace and the last closing brace
+    const firstBrace = cleanedText.indexOf('{');
+    const lastBrace = cleanedText.lastIndexOf('}');
+
+    // 3. Check if a potential JSON object structure exists
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+        // Extract the potential JSON string
+        const potentialJson = cleanedText.substring(firstBrace, lastBrace + 1);
+
+        // 4. Try parsing the extracted string
+        try {
+            return JSON.parse(potentialJson);
+        } catch (e) {
+            console.warn('JSON parse failed after extraction:', e.message, 'Extracted:', potentialJson);
+            // Parsing failed even after extraction (likely malformed JSON)
+            return null; // Indicate failure
+        }
+    } else {
+        // No '{...}' structure found in the cleaned text
+        return null; // Indicate failure
+    }
+}
+
+
+// Improved model call function with robust JSON handling
 async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('Missing GEMINI_API_KEY');
   }
-  
+
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  
+
   // Convert MCP message format to Gemini format
   const contents = messages.map(msg => ({
+    // Keep system/developer as user for Gemini for now, unless specific API docs advise otherwise
     role: msg.role === 'system' || msg.role === 'developer' ? 'user' : msg.role,
     parts: [{ text: msg.content }]
   }));
@@ -26,8 +66,11 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   const payload = {
     contents,
     generationConfig: {
-      temperature: 0.5,
-      maxOutputTokens: 2048
+      temperature: 0.5, // Adjust as needed
+      maxOutputTokens: 2048, // Adjust as needed
+      // Attempt to force JSON output if supported by the specific model/API version
+      // Note: This might not always work or be supported. Client-side parsing is still essential.
+      response_mime_type: "application/json"
     }
   };
 
@@ -40,45 +83,74 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
       },
       body: JSON.stringify(payload)
     });
-    
+
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error('Model API error:', res.status, errorText);
-      throw new Error(`Model API error: ${res.status}`);
-    }
-    
-    const responseJson = await res.json();
-    
-    // Extract content from Gemini response
-    let content = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!content) {
-      throw new Error('Empty response from model');
-    }
-    
-    // Clean the content - remove markdown code blocks and other formatting
-    content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-    
-    // Handle JSON responses
-    try {
-      // For JSON content, parse it correctly
-      if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
-        return JSON.parse(content);
-      } else {
-        return content;
+      // Attempt to read error details even on failure
+      let errorText = `Status code ${res.status}`;
+      try {
+          const errorJson = await res.json(); // API might return JSON error details
+          errorText = JSON.stringify(errorJson);
+      } catch (e) {
+          // If reading JSON fails, fall back to plain text
+          try {
+              errorText = await res.text();
+          } catch (e2) { /* Ignore further errors */ }
       }
-    } catch (e) {
-      console.error('JSON parse error:', e, 'Content:', content);
-      // Create a basic object with the content if JSON parsing fails
-      return {
-        rawContent: content,
-        flipped_headline: content.includes('flipped_headline') ? 
-          content.match(/["']flipped_headline["']\s*:\s*["']([^"']+)["']/)?.[1] || 'Alternative view unavailable' :
-          'Alternative view unavailable'
-      };
+      console.error('Model API error:', res.status, errorText);
+      // Try to provide a more informative error message if possible
+      throw new Error(`Model API error: ${res.status}. Details: ${errorText.substring(0, 200)}`); // Limit length
     }
+
+    const responseJson = await res.json();
+
+    // Extract content from Gemini response using optional chaining
+    const rawContent = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (typeof rawContent !== 'string' || rawContent.trim() === '') {
+        // Handle cases where content is missing, not a string, or empty after trim
+        console.warn('Received empty or non-string content from model:', rawContent);
+        // Decide if this is an error or just an empty valid response
+        // Given the prompts demand JSON, treat this as an error state for parsing.
+         return {
+             error: "Model returned empty or invalid content",
+             rawContent: rawContent || '' // Return raw content if available
+         };
+    }
+
+    // Use the robust JSON extraction and parsing function
+    const parsedJson = extractAndParseJson(rawContent);
+
+    if (parsedJson !== null) {
+        // Successfully parsed JSON
+        return parsedJson;
+    } else {
+        // Failed to extract/parse JSON, even with the robust function
+        console.error('Failed to parse JSON from model response despite robust attempt. Raw content:', rawContent);
+        // Return an error object containing the raw content for debugging by the caller
+        return {
+            error: "Failed to parse JSON response from model",
+            rawContent: rawContent
+        };
+        // --- OLD Fallback (Removed in favor of error object) ---
+        // // Create a basic object with the content if JSON parsing fails
+        // return {
+        //   rawContent: rawContent, // Use the original cleaned content here
+        //   flipped_headline: rawContent.includes('flipped_headline') ?
+        //     rawContent.match(/["']flipped_headline["']\s*:\s*["']([^"']+)["']/)?.[1] || 'Alternative view unavailable' :
+        //     'Alternative view unavailable'
+        // };
+    }
+
   } catch (error) {
-    console.error('Error calling model:', error);
-    throw error;
+    // Catch errors from fetch, initial response reading, or thrown errors
+    console.error('Error calling model or processing response:', error);
+    // Re-throw or return a structured error
+     // Ensure error is an instance of Error for consistent handling downstream
+     if (error instanceof Error) {
+         throw error;
+     } else {
+         throw new Error(String(error));
+     }
   }
 }
 
