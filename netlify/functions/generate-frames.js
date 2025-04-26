@@ -9,57 +9,67 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch');
 
-// Generic model call using Model Context Protocol
+// Improved model call function with proper error handling
 async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('Missing GEMINI_API_KEY');
   }
-  // Use the correct Gemini API endpoint and payload format
+  
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   const payload = {
-    prompt: { messages },
-    temperature: 0.5,
-    maxOutputTokens: 2048,
-    candidateCount: 1,
+    contents: messages.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.content }]
+    })),
+    generationConfig: {
+      temperature: 0.5,
+      maxOutputTokens: 2048,
+      candidateCount: 1
+    }
   };
 
-  let res, text;
   try {
-    res = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`
       },
       body: JSON.stringify(payload),
+      timeout: 25000 // Adding timeout to prevent hanging requests
     });
-    text = await res.text();
-  } catch (networkErr) {
-    console.error('Network error calling model API:', networkErr);
-    throw new Error('Network error calling model API');
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Model API error:', res.status, errorText);
+      throw new Error(`Model API error: ${res.status}`);
+    }
+    
+    const responseJson = await res.json();
+    
+    // Properly extract content from Gemini response format
+    const candidateContent = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!candidateContent) {
+      console.error('No content in model response:', JSON.stringify(responseJson));
+      throw new Error('Empty model response');
+    }
+    
+    // Try to parse as JSON if it appears to be JSON
+    if (candidateContent.trim().startsWith('{') && candidateContent.trim().endsWith('}')) {
+      try {
+        return JSON.parse(candidateContent);
+      } catch (jsonError) {
+        // If parsing fails, return the raw text
+        return candidateContent;
+      }
+    }
+    
+    return candidateContent;
+  } catch (error) {
+    console.error('Error calling model:', error);
+    throw new Error(`Error calling model: ${error.message}`);
   }
-
-  if (!res.ok) {
-    console.error('Model API error:', res.status, text);
-    throw new Error(`Model API responded with status ${res.status}`);
-  }
-
-  let responseJson;
-  try {
-    responseJson = JSON.parse(text);
-  } catch (parseErr) {
-    console.error('Invalid JSON from model API:', parseErr, text);
-    throw new Error('Invalid JSON from model API');
-  }
-
-  const candidate = responseJson?.candidates?.[0]?.output;
-  if (!candidate) {
-    console.error('Unexpected model API structure:', JSON.stringify(responseJson));
-    throw new Error('Unexpected model API response format');
-  }
-
-  return candidate;
 }
 
 async function saveHeadlineData({ input_headline, flipped_headline, human_flipped_headline = '' }) {
@@ -73,7 +83,13 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
       created_at: new Date().toISOString(),
     },
   };
-  await docClient.put(params).promise();
+  
+  try {
+    await docClient.put(params).promise();
+  } catch (error) {
+    console.error('Error saving to DynamoDB:', error);
+    throw new Error('Database error');
+  }
 }
 
 exports.handler = async function(event) {
@@ -82,23 +98,43 @@ exports.handler = async function(event) {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
+  
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: commonHeaders,
+      body: JSON.stringify({ message: 'CORS preflight successful' })
+    };
+  }
+  
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    return { 
+      statusCode: 405, 
+      headers: commonHeaders, 
+      body: JSON.stringify({ error: 'Method Not Allowed' }) 
+    };
   }
 
   let headline;
   try {
-    const { headline: h } = JSON.parse(event.body);
-    headline = h;
-    if (!headline) throw new Error();
-  } catch {
-    return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ error: 'Invalid or missing headline' }) };
+    const body = JSON.parse(event.body || '{}');
+    headline = body.headline;
+    if (!headline || typeof headline !== 'string' || headline.trim() === '') {
+      throw new Error('Invalid headline');
+    }
+  } catch (error) {
+    return { 
+      statusCode: 400, 
+      headers: commonHeaders, 
+      body: JSON.stringify({ error: 'Invalid or missing headline' }) 
+    };
   }
 
   // Agent 1: Detailed Frame Analysis
   const messages1 = [
-  { role: 'system', content: `You are an advanced semantic news analysis agent specializing in cognitive frame analysis. Analyze the provided news headline to identify embedded cognitive frames.` },
-  { role: 'developer', content: `Instructions:
+    { role: 'system', content: `You are an advanced semantic news analysis agent specializing in cognitive frame analysis. Analyze the provided news headline to identify embedded cognitive frames.` },
+    { role: 'developer', content: `Instructions:
 1. Carefully parse the input headline: "${headline}".
 2. Identify relevant cognitive frames (e.g., Conflict, Human Interest, Responsibility, Economic Consequences, Morality, Progress/Recovery).
 3. For each frame, extract keywords, linguistic indicators (e.g., voice, metaphors), agent/patient roles, and contextual elements supporting the frame.
@@ -123,8 +159,8 @@ Required JSON Output Schema:
   ]
 }
 \`\`\`` },
-  { role: 'user', content: `Analyze this headline: "${headline}"` }
-];
+    { role: 'user', content: `Analyze this headline: "${headline}"` }
+  ];
 
   // Agent 2: Simplified Frame Decomposition
   const messages2 = [
@@ -154,26 +190,46 @@ Required JSON Output Schema:
     { role: 'user', content: `Analyze this headline: "${headline}"` }
   ];
 
-
+  // Run both analyses in parallel with proper error handling
   let analysis1, analysis2;
   try {
     const [res1, res2] = await Promise.allSettled([
       callModel(messages1),
       callModel(messages2)
     ]);
-    analysis1 = res1.status === 'fulfilled' ? res1.value : { error: res1.reason.message };
-    analysis2 = res2.status === 'fulfilled' ? res2.value : { error: res2.reason.message };
+    
+    analysis1 = res1.status === 'fulfilled' ? res1.value : { error: res1.reason?.message || "Analysis 1 failed" };
+    analysis2 = res2.status === 'fulfilled' ? res2.value : { error: res2.reason?.message || "Analysis 2 failed" };
   } catch (err) {
     console.error('Parallel agent error:', err);
-    return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ error: 'Error running analysis agents' }) };
+    return { 
+      statusCode: 500, 
+      headers: commonHeaders, 
+      body: JSON.stringify({ error: 'Error running analysis agents' }) 
+    };
   }
 
-
-
-    // Agent 3: Synthesis and Comparison
-  const messages3 = [
-    { role: 'system', content: `You are a journalist with a PhD in media framing, sentiment analysis, and subliminal messaging.` },
-    { role: 'developer', content: `Instructions:
+  // Agent 3: Synthesis and Comparison
+  try {
+    const agent1Failed = typeof analysis1 === 'object' && 'error' in analysis1;
+    const agent2Failed = typeof analysis2 === 'object' && 'error' in analysis2;
+    
+    // Skip synthesis if both analyses failed
+    if (agent1Failed && agent2Failed) {
+      return {
+        statusCode: 500,
+        headers: commonHeaders,
+        body: JSON.stringify({ 
+          error: 'Both analysis agents failed',
+          analysis_1: analysis1,
+          analysis_2: analysis2
+        })
+      };
+    }
+    
+    const messages3 = [
+      { role: 'system', content: `You are a journalist with a PhD in media framing, sentiment analysis, and subliminal messaging.` },
+      { role: 'developer', content: `Instructions:
 1. Compare the identified frames, keywords, agent/patient roles, and overall interpretation in Analysis 1 and Analysis 2.
 2. Highlight key similarities and differences in the framing identified by each analysis.
 3. Output a flipped_headline presenting the same key information with an opposite frame. Add assumed info in [] if needed.
@@ -192,23 +248,47 @@ Required JSON Output Schema:
     "string (Description of a difference)",
     "..."
   ],
-  "agent1_had_error": ${res1.status !== 'fulfilled'},
-  "agent2_had_error": ${res2.status !== 'fulfilled'}
+  "agent1_had_error": ${agent1Failed},
+  "agent2_had_error": ${agent2Failed}
 }
 \`\`\`` },
-  { role: 'user', content: `Analysis1: ${JSON.stringify(analysis1)}
+      { role: 'user', content: `Analysis1: ${JSON.stringify(analysis1)}
 Analysis2: ${JSON.stringify(analysis2)}
 Original: "${headline}"` }
-  ];
+    ];
 
-  const synthesis = await callModel(messages3, 'gemini-1.5-flash-latest');
+    const synthesis = await callModel(messages3, 'gemini-1.5-flash-latest');
+    
+    if (!synthesis || !synthesis.flipped_headline) {
+      throw new Error('Invalid synthesis result');
+    }
 
-  // Save to DynamoDB
-  await saveHeadlineData({ input_headline: headline, flipped_headline: synthesis.flipped_headline });
+    // Save to DynamoDB
+    await saveHeadlineData({ 
+      input_headline: headline, 
+      flipped_headline: synthesis.flipped_headline 
+    });
 
-  return {
-    statusCode: 200,
-    headers: commonHeaders,
-    body: JSON.stringify({ analysis_1: analysis1, analysis_2: analysis2, synthesis: synthesis })
-  };
+    return {
+      statusCode: 200,
+      headers: commonHeaders,
+      body: JSON.stringify({ 
+        analysis_1: analysis1, 
+        analysis_2: analysis2, 
+        synthesis: synthesis 
+      })
+    };
+  } catch (error) {
+    console.error('Error in synthesis or database operation:', error);
+    return { 
+      statusCode: 500, 
+      headers: commonHeaders, 
+      body: JSON.stringify({ 
+        error: 'Error in synthesis or database operation', 
+        message: error.message,
+        analysis_1: analysis1,
+        analysis_2: analysis2
+      }) 
+    };
+  }
 };
