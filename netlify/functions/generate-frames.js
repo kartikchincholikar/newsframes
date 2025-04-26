@@ -15,7 +15,7 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
     throw new Error('Missing GEMINI_API_KEY');
   }
   // Use the correct Gemini API endpoint and payload format
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateMessage`;
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   const payload = {
     prompt: { messages },
