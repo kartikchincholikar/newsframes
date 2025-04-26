@@ -50,17 +50,31 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
     const responseJson = await res.json();
     
     // Extract content from Gemini response
-    const content = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    let content = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!content) {
       throw new Error('Empty response from model');
     }
     
+    // Clean the content - remove markdown code blocks and other formatting
+    content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+    
     // Handle JSON responses
     try {
-      return JSON.parse(content);
+      // For JSON content, parse it correctly
+      if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+        return JSON.parse(content);
+      } else {
+        return content;
+      }
     } catch (e) {
-      // Return raw text if not valid JSON
-      return content;
+      console.error('JSON parse error:', e, 'Content:', content);
+      // Create a basic object with the content if JSON parsing fails
+      return {
+        rawContent: content,
+        flipped_headline: content.includes('flipped_headline') ? 
+          content.match(/["']flipped_headline["']\s*:\s*["']([^"']+)["']/)?.[1] || 'Alternative view unavailable' :
+          'Alternative view unavailable'
+      };
     }
   } catch (error) {
     console.error('Error calling model:', error);
