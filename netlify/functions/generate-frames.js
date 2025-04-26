@@ -16,16 +16,18 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   }
   
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  
+  // Convert MCP message format to Gemini format
+  const contents = messages.map(msg => ({
+    role: msg.role === 'system' || msg.role === 'developer' ? 'user' : msg.role,
+    parts: [{ text: msg.content }]
+  }));
 
   const payload = {
-    contents: messages.map(msg => ({
-      role: msg.role,
-      parts: [{ text: msg.content }]
-    })),
+    contents,
     generationConfig: {
       temperature: 0.5,
-      maxOutputTokens: 2048,
-      candidateCount: 1
+      maxOutputTokens: 2048
     }
   };
 
@@ -34,10 +36,9 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`
+        'x-goog-api-key': process.env.GEMINI_API_KEY
       },
-      body: JSON.stringify(payload),
-      timeout: 25000 // Adding timeout to prevent hanging requests
+      body: JSON.stringify(payload)
     });
     
     if (!res.ok) {
@@ -48,27 +49,22 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
     
     const responseJson = await res.json();
     
-    // Properly extract content from Gemini response format
-    const candidateContent = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateContent) {
-      console.error('No content in model response:', JSON.stringify(responseJson));
-      throw new Error('Empty model response');
+    // Extract content from Gemini response
+    const content = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) {
+      throw new Error('Empty response from model');
     }
     
-    // Try to parse as JSON if it appears to be JSON
-    if (candidateContent.trim().startsWith('{') && candidateContent.trim().endsWith('}')) {
-      try {
-        return JSON.parse(candidateContent);
-      } catch (jsonError) {
-        // If parsing fails, return the raw text
-        return candidateContent;
-      }
+    // Handle JSON responses
+    try {
+      return JSON.parse(content);
+    } catch (e) {
+      // Return raw text if not valid JSON
+      return content;
     }
-    
-    return candidateContent;
   } catch (error) {
     console.error('Error calling model:', error);
-    throw new Error(`Error calling model: ${error.message}`);
+    throw error;
   }
 }
 
