@@ -18,7 +18,9 @@
   "homepage": "https://github.com/kartikchincholikar/newsframes#readme",
   "description": "",
   "dependencies": {
+    "@langchain/core": "^0.3.53",
+    "@langchain/langgraph": "^0.2.68",
     "aws-sdk": "^2.1692.0",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.6.7"
   }
 }
