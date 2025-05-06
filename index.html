@@ -4,175 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LangGraph News Frames Visualizer</title>
+    <!-- Cytoscape.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <!-- Optional: Layout extension like Dagre for better DAGs -->
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 1000px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #f4f7f6;
-        }
+        body { /* ... existing styles ... */ }
+        .container { /* ... existing styles ... */ }
+        h1, h2, h3 { /* ... existing styles ... */ }
+        .input-area, textarea, button { /* ... existing styles ... */ }
+        .loader, @keyframes spin { /* ... existing styles ... */ }
+        .message, .error, .warning, .success { /* ... existing styles ... */ }
 
-        .container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px 30px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        h1, h2 {
-            color: #2c3e50;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        h3 {
-            color: #34495e;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #ecf0f1;
-            padding-bottom: 5px;
-        }
-
-        .input-area { /* ... existing styles ... */ }
-        textarea { /* ... existing styles ... */ }
-        button { /* ... existing styles ... */ }
-        .loader { /* ... existing styles ... */ }
-        @keyframes spin { /* ... existing styles ... */ }
-        .message { /* ... existing styles ... */ }
-        .error { /* ... existing styles ... */ }
-        .warning { /* ... existing styles ... */ }
-        .success { /* ... existing styles ... */ }
-
-        /* Graph Visualization */
+        /* Graph Visualization Area */
         .graph-visualization-area {
             margin-top: 30px;
-            display: none;
+            display: none; /* Hidden initially */
         }
 
-        .graph-flow {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-            padding: 10px;
+        /* Cytoscape Container */
+        #cy-graph {
+            width: 100%;
+            height: 400px; /* Adjust as needed */
+            border: 1px solid #ddd;
             background-color: #f9f9f9;
             border-radius: 8px;
-            position: relative; /* For pseudo-elements if needed later */
+            margin-bottom: 20px;
         }
-
-        .graph-stage {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            position: relative; /* For connecting lines from nodes */
-            margin-bottom: 40px; /* Increased space for connectors */
-        }
-        .graph-stage:last-child {
-            margin-bottom: 0;
-        }
-        
-        .parallel-analyzers-stage {
-            justify-content: space-around;
-            /* margin-bottom: 20px; Initial thought, handled by stage margin */
-        }
-
-        .graph-node {
-            background-color: #e9ecef;
-            border: 1px solid #ced4da;
-            padding: 15px;
-            margin: 5px 10px;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            min-width: 160px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            position: relative; /* Crucial for pseudo-element connectors */
-            z-index: 1; /* Ensure node is above lines */
-        }
-        .graph-node:hover { /* ... existing styles ... */ }
-        .graph-node.active { /* ... existing styles ... */ }
-        .graph-node.error-node { /* ... existing styles ... */ }
-        .graph-node.success-node { /* ... existing styles ... */ }
-
-        /* --- CSS Connectors --- */
-        /* Vertical line down from a node */
-        .graph-node.has-connector-down::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: -25px; /* Adjust to control line length and gap */
-            transform: translateX(-50%);
-            width: 2px; /* Line thickness */
-            height: 25px; /* Line length */
-            background-color: #adb5bd; /* Line color */
-            z-index: 0; /* Behind node content */
-        }
-         /* Arrowhead for the line down */
-        .graph-node.has-connector-down.has-arrow::before { /* Using before for arrowhead to not conflict with line */
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: -25px; /* Position at the end of the line */
-            transform: translateX(-50%) rotate(45deg);
-            width: 8px; /* Arrowhead size */
-            height: 8px;
-            border-bottom: 2px solid #adb5bd;
-            border-right: 2px solid #adb5bd;
-             z-index: 0;
-        }
-
-
-        /* For parallel nodes, a line up to a common point (simplified) */
-        .graph-node.connect-up-to-join::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: -25px; /* Line goes upwards */
-            transform: translateX(-50%);
-            width: 2px;
-            height: 25px;
-            background-color: #adb5bd;
-            z-index: 0;
-        }
-        /* Specific adjustments for parallel join lines might be needed */
-        #node-analysis1.connect-up-to-join::before {
-            /* transform: translateX(-50%) skewX(-20deg);  Attempt to angle, complex */
-        }
-        #node-analysis2.connect-up-to-join::before {
-            /* transform: translateX(-50%) skewX(20deg); Attempt to angle, complex */
-        }
-
-        /* Line from input to the parallel stage - more complex */
-        /* We can style the .node-connector div for this */
-        .node-connector-div {
-            height: 20px; /* Space for the arrow */
-            width: 100%;
-            text-align: center;
-            position: relative;
-            margin-bottom: 5px; /* Space before next stage */
-        }
-        .node-connector-div .arrow-down {
-            display: inline-block;
-            font-size: 1.5em; /* Can be an actual arrow char or SVG */
-            color: #adb5bd;
-        }
-        /* This is a visual element, not a structural connector div */
-        .connector-to-parallel::after { /* Line from above to center of parallel stage */
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: -40px; /* From input node's bottom to center of this stage's top */
-            transform: translateX(-50%);
-            width: 2px;
-            height: 20px; /* Length of this segment */
-            background-color: #adb5bd;
-            z-index: 0;
-        }
-
 
         .node-details-area { /* ... existing styles ... */ }
         .node-details-area h3 { /* ... existing styles ... */ }
@@ -185,51 +44,26 @@
 <body>
     <div class="container">
         <h1>LangGraph News Frames Visualizer</h1>
+
         <div class="input-area">
             <textarea id="headline-input" placeholder="Enter a news headline here..." rows="3"></textarea>
             <button id="generate-btn">Analyze with LangGraph</button>
         </div>
+
         <div id="loader" class="loader"></div>
         <div id="error-message" class="message error"></div>
         <div id="status-message" class="message"></div>
 
         <div class="graph-visualization-area" id="graph-viz-area">
             <h2>Graph Execution Flow</h2>
-            <div class="graph-flow">
-                <!-- Stage 1: Input -->
-                <div class="graph-stage">
-                    <!-- Add has-connector-down and has-arrow to nodes that have an outgoing connection -->
-                    <div class="graph-node has-connector-down has-arrow" data-node-key="input_headline" id="node-input">Input Headline</div>
-                </div>
-                <!-- Removed text connector div, relying on node pseudo-elements -->
-
-                <!-- Stage 2: Parallel Analyzers -->
-                <div class="graph-stage parallel-analyzers-stage" style="margin-top: -15px;"> 
-                    <!-- connect-up-to-join will draw a line upwards FROM these nodes -->
-                    <!-- has-connector-down will draw a line downwards FROM these nodes -->
-                    <div class="graph-node connect-up-to-join has-connector-down has-arrow" data-node-key="analysis1" id="node-analysis1">1a. Detailed Analysis</div>
-                    <div class="graph-node connect-up-to-join has-connector-down has-arrow" data-node-key="analysis2" id="node-analysis2">1b. Simplified Analysis</div>
-                </div>
-                <!-- Removed text connector div -->
-
-                <!-- Stage 3: Synthesizer -->
-                <div class="graph-stage" style="margin-top: -15px;">
-                     {/* This node will have lines coming INTO it from above (implicitly from analysis1 & 2) */}
-                    <div class="graph-node has-connector-down has-arrow" data-node-key="synthesizer" id="node-synthesizer">2. Synthesizer</div>
-                </div>
-                <!-- Removed text connector div -->
-                
-                <!-- Stage 4: Saver -->
-                <div class="graph-stage" style="margin-top: -15px;">
-                    <div class="graph-node" data-node-key="saver" id="node-saver">3. Save to DB</div> {/* No outgoing connector from the last visualized node */}
-                </div>
-            </div>
+            <div id="cy-graph"></div> {/* Cytoscape renders here */}
 
             <div class="node-details-area" id="node-details">
                 <h3>Node Details</h3>
-                <p>Click on a node in the graph above to see its output.</p>
+                <p>Click on a node in the graph to see its output.</p>
                 <pre id="node-output-pre">{}</pre>
             </div>
+
             <div class="final-output-area" id="final-output">
                 <h3>Final Flipped Headline</h3>
                 <p id="flipped-headline-text">Pending analysis...</p>
@@ -239,9 +73,6 @@
     </div>
 
     <script>
-        // --- JavaScript (NO CHANGES NEEDED from your previous version) ---
-        // The JS logic for fetching data, handling clicks, and displaying
-        // node details remains the same. This fix is purely CSS and HTML structure.
         const headlineInput = document.getElementById('headline-input');
         const generateBtn = document.getElementById('generate-btn');
         const loader = document.getElementById('loader');
@@ -249,7 +80,6 @@
         const statusMessage = document.getElementById('status-message');
 
         const graphVizArea = document.getElementById('graph-viz-area');
-        const graphNodes = document.querySelectorAll('.graph-node');
         const nodeDetailsContainer = document.getElementById('node-details');
         const nodeOutputPre = document.getElementById('node-output-pre');
         
@@ -258,33 +88,25 @@
         const dbSaveStatusText = document.getElementById('db-save-status-text');
 
         let currentGraphState = null;
+        let cy = null; // Cytoscape instance
 
+        // --- Helper Functions (escapeHtml, showUIMessage, hideUIMessages - unchanged) ---
         function escapeHtml(unsafe) {
             if (unsafe === null || typeof unsafe === 'undefined') return '';
             return unsafe.toString()
-                .replace(/&/g, "&")
+                .replace(/&/g, "&") // Corrected escapeHTML
                 .replace(/</g, "<")
                 .replace(/>/g, ">")
                 .replace(/"/g, "\"")
                 .replace(/'/g, "'");
         }
+        function showUIMessage(element, text, type = 'error') { /* ... unchanged ... */ }
+        function hideUIMessages() { /* ... unchanged ... */ }
 
-        function showUIMessage(element, text, type = 'error') {
-            element.textContent = text;
-            element.className = `message ${type}`;
-            element.style.display = 'block';
-        }
-        function hideUIMessages() {
-            errorMessage.style.display = 'none';
-            statusMessage.style.display = 'none';
-        }
 
         generateBtn.addEventListener('click', async () => {
             const headline = headlineInput.value.trim();
-            if (!headline) {
-                showUIMessage(errorMessage, "Please enter a headline.");
-                return;
-            }
+            if (!headline) { /* ... unchanged ... */ return; }
 
             hideUIMessages();
             loader.style.display = "block";
@@ -293,7 +115,11 @@
             nodeOutputPre.textContent = "{}";
             flippedHeadlineText.textContent = "Pending analysis...";
             dbSaveStatusText.textContent = "";
-            graphNodes.forEach(n => n.classList.remove('active', 'error-node', 'success-node'));
+            
+            if (cy) { // Destroy previous instance if exists
+                cy.destroy();
+                cy = null;
+            }
 
             try {
                 const response = await fetch('/.netlify/functions/generate-frames', {
@@ -302,64 +128,166 @@
                     body: JSON.stringify({ headline })
                 });
                 const responseData = await response.json();
-                if (!response.ok) {
-                    throw new Error(responseData.error || responseData.message || `Request failed: ${response.status}`);
-                }
+                if (!response.ok) { /* ... unchanged ... */ }
                 
                 if (responseData.error_summary || (responseData.graph_output && Object.values(responseData.graph_output).some(v => v && v.error))) {
-                     showUIMessage(statusMessage, responseData.message || "Processing completed with some issues.", responseData.graph_output?.db_save_status?.success === false && !responseData.error_summary ? 'warning' : 'warning');
+                    showUIMessage(statusMessage, responseData.message || "Processing completed with some issues.", 'warning');
                 } else {
                     showUIMessage(statusMessage, responseData.message || "Processing successful!", "success");
                 }
 
                 currentGraphState = responseData.graph_output;
-                displayGraphResults(currentGraphState);
+                initializeAndDisplayGraph(currentGraphState); // New function for Cytoscape
                 graphVizArea.style.display = "block";
-            } catch (error) {
-                showUIMessage(errorMessage, `Error: ${error.message}`);
-                console.error("Error during analysis:", error);
-                currentGraphState = null;
-            } finally {
-                loader.style.display = "none";
-                generateBtn.disabled = false;
-            }
+
+            } catch (error) { /* ... unchanged ... */ }
+            finally { /* ... unchanged ... */ }
         });
 
-        graphNodes.forEach(node => {
-            node.addEventListener('click', () => {
-                if (!currentGraphState) return;
-                graphNodes.forEach(n => n.classList.remove('active'));
-                node.classList.add('active');
-                const nodeKey = node.dataset.nodeKey;
-                let detailsToShow = {};
-
-                switch(nodeKey) {
-                    case 'input_headline':
-                        detailsToShow = { input_headline: currentGraphState.input_headline };
-                        break;
-                    case 'analysis1':
-                        detailsToShow = { analysis1_result: currentGraphState.analysis1_result };
-                        break;
-                    case 'analysis2':
-                        detailsToShow = { analysis2_result: currentGraphState.analysis2_result };
-                        break;
-                    case 'synthesizer':
-                        detailsToShow = { synthesis_result: currentGraphState.synthesis_result };
-                        break;
-                    case 'saver':
-                        detailsToShow = { db_save_status: currentGraphState.db_save_status };
-                        break;
-                    default:
-                        detailsToShow = { message: "No specific data for this conceptual node." };
-                }
-                nodeOutputPre.textContent = JSON.stringify(detailsToShow, null, 2);
-                nodeDetailsContainer.querySelector('h3').textContent = `Details for: ${node.textContent}`;
-            });
-        });
-
-        function displayGraphResults(graphData) {
+        function initializeAndDisplayGraph(graphData) {
             if (!graphData) return;
 
+            // Define graph elements for Cytoscape
+            // Your backend conceptual nodes: input, parallel_analyzers, synthesizer, saver
+            // parallel_analyzers conceptually splits into analysis1 & analysis2
+            const elements = [
+                // Nodes
+                { data: { id: 'input', label: 'Input Headline', stateKey: 'input_headline' } },
+                { data: { id: 'analysis1', label: '1a. Detailed Analysis', stateKey: 'analysis1' } },
+                { data: { id: 'analysis2', label: '1b. Simplified Analysis', stateKey: 'analysis2' } },
+                { data: { id: 'synthesizer', label: '2. Synthesizer', stateKey: 'synthesizer' } },
+                { data: { id: 'saver', label: '3. Save to DB', stateKey: 'saver' } },
+                // Optional: A "start_parallel" node if you want to explicitly show the fork point before analysis1/2
+                // { data: { id: 'start_parallel', label: 'Start Analyses', type: 'pseudo' } },
+
+                // Edges (source and target are node IDs)
+                // If using 'start_parallel':
+                // { data: { id: 'edge_input_start', source: 'input', target: 'start_parallel', label: 'analyze' } },
+                // { data: { id: 'edge_start_ana1', source: 'start_parallel', target: 'analysis1' } },
+                // { data: { id: 'edge_start_ana2', source: 'start_parallel', target: 'analysis2' } },
+                // { data: { id: 'edge_ana1_synth', source: 'analysis1', target: 'synthesizer' } },
+                // { data: { id: 'edge_ana2_synth', source: 'analysis2', target: 'synthesizer' } },
+                
+                // Direct edges for simpler graph structure:
+                { data: { id: 'edge_input_ana1', source: 'input', target: 'analysis1' } },
+                { data: { id: 'edge_input_ana2', source: 'input', target: 'analysis2' } },
+                { data: { id: 'edge_ana1_synth', source: 'analysis1', target: 'synthesizer' } },
+                { data: { id: 'edge_ana2_synth', source: 'analysis2', target: 'synthesizer' } },
+                { data: { id: 'edge_synth_saver', source: 'synthesizer', target: 'saver' } },
+            ];
+
+            cy = cytoscape({
+                container: document.getElementById('cy-graph'),
+                elements: elements,
+                style: [ // Define styles for nodes and edges
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#e9ecef',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': '#333',
+                            'font-size': '10px',
+                            'width': '80px', // Adjust for label length
+                            'height': '40px',
+                            'shape': 'round-rectangle', // or 'ellipse', 'rectangle'
+                            'border-width': 1,
+                            'border-color': '#ced4da',
+                            'padding': '5px'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#adb5bd',
+                            'target-arrow-color': '#adb5bd',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier' // or 'straight', 'haystack'
+                        }
+                    },
+                    { // Style for selected node
+                        selector: 'node:selected',
+                        style: {
+                            'border-width': 2,
+                            'border-color': '#3498db'
+                        }
+                    },
+                    { // Style for error nodes
+                        selector: '.error-node',
+                        style: {
+                            'background-color': '#fcefee',
+                            'border-color': '#e74c3c',
+                            'border-width': 2
+                        }
+                    },
+                    { // Style for success nodes
+                        selector: '.success-node',
+                        style: {
+                            'background-color': '#e6f7f0',
+                            'border-color': '#2ecc71',
+                            'border-width': 2
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'dagre', // Use Dagre layout for DAGs
+                    rankDir: 'TB', // Top-to-Bottom
+                    spacingFactor: 1.2,
+                    padding: 20
+                }
+            });
+
+            // --- Update Node Styles based on graphData ---
+            const nodeStatusMap = {
+                'input': graphData.input_headline ? 'success' : 'error', // Input is always "success" if present
+                'analysis1': graphData.analysis1_result?.error ? 'error' : (graphData.analysis1_result ? 'success' : null),
+                'analysis2': graphData.analysis2_result?.error ? 'error' : (graphData.analysis2_result ? 'success' : null),
+                'synthesizer': graphData.synthesis_result?.error ? 'error' : (graphData.synthesis_result ? 'success' : null),
+                'saver': graphData.db_save_status && !graphData.db_save_status.success ? 'error' : (graphData.db_save_status?.success ? 'success' : null)
+            };
+
+            for (const [nodeId, status] of Object.entries(nodeStatusMap)) {
+                if (status === 'success') {
+                    cy.getElementById(nodeId).addClass('success-node');
+                } else if (status === 'error') {
+                    cy.getElementById(nodeId).addClass('error-node');
+                }
+            }
+
+            // --- Handle Node Clicks ---
+            cy.on('tap', 'node', function(evt){
+                const node = evt.target;
+                const stateKey = node.data('stateKey'); // Get the key we stored
+                let detailsToShow = {};
+
+                if (currentGraphState && stateKey) {
+                    switch(stateKey) {
+                        case 'input_headline':
+                            detailsToShow = { input_headline: currentGraphState.input_headline };
+                            break;
+                        case 'analysis1':
+                            detailsToShow = { analysis1_result: currentGraphState.analysis1_result };
+                            break;
+                        case 'analysis2':
+                            detailsToShow = { analysis2_result: currentGraphState.analysis2_result };
+                            break;
+                        case 'synthesizer':
+                            detailsToShow = { synthesis_result: currentGraphState.synthesis_result };
+                            break;
+                        case 'saver':
+                            detailsToShow = { db_save_status: currentGraphState.db_save_status };
+                            break;
+                        default:
+                            detailsToShow = { message: `Data for ${stateKey} not found in current state.` };
+                    }
+                    nodeOutputPre.textContent = JSON.stringify(detailsToShow, null, 2);
+                    nodeDetailsContainer.querySelector('h3').textContent = `Details for: ${node.data('label')}`;
+                }
+            });
+            
+            // --- Display final outputs ---
             flippedHeadlineText.textContent = escapeHtml(graphData.flipped_headline || "N/A");
             if (graphData.db_save_status) {
                 dbSaveStatusText.textContent = graphData.db_save_status.success 
@@ -370,25 +298,12 @@
                 dbSaveStatusText.textContent = "Database: Status N/A";
             }
 
-            document.getElementById('node-input').classList.add('success-node');
-
-            const analysis1Node = document.getElementById('node-analysis1');
-            if (graphData.analysis1_result?.error) analysis1Node.classList.add('error-node');
-            else if (graphData.analysis1_result) analysis1Node.classList.add('success-node');
-
-            const analysis2Node = document.getElementById('node-analysis2');
-            if (graphData.analysis2_result?.error) analysis2Node.classList.add('error-node');
-            else if (graphData.analysis2_result) analysis2Node.classList.add('success-node');
-            
-            const synthesizerNode = document.getElementById('node-synthesizer');
-            if (graphData.synthesis_result?.error) synthesizerNode.classList.add('error-node');
-            else if (graphData.synthesis_result) synthesizerNode.classList.add('success-node');
-            
-            const saverNode = document.getElementById('node-saver');
-            if (graphData.db_save_status && !graphData.db_save_status.success) saverNode.classList.add('error-node');
-            else if (graphData.db_save_status && graphData.db_save_status.success) saverNode.classList.add('success-node');
-
-            document.getElementById('node-input').click();
+            // Auto-select/tap the input node initially
+            const inputNodeCy = cy.getElementById('input');
+            if (inputNodeCy.length) { // Check if node exists
+                inputNodeCy.trigger('tap');
+                inputNodeCy.select(); // Visually select
+            }
         }
     </script>
 </body>
