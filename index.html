@@ -3,461 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Frames Analysis</title>
+    <title>LangGraph News Frames Visualizer</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 900px; /* Increased width slightly */
-            margin: 20px auto; /* Added top/bottom margin */
+            max-width: 900px;
+            margin: 20px auto;
             padding: 20px;
-            background-color: #f4f7f6; /* Softer background */
+            background-color: #f4f7f6;
         }
 
         .container {
             background-color: white;
             border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 20px 30px; /* Adjusted padding */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
 
-        h1 {
+        h1, h2 {
             color: #2c3e50;
             text-align: center;
             margin-bottom: 20px;
         }
-         h2 {
+        h3 {
             color: #34495e;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #ecf0f1;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ecf0f1;
             padding-bottom: 5px;
         }
-         h3 {
-             color: #2980b9;
-             margin-top: 20px;
-             margin-bottom: 10px;
-         }
-          h4 {
-             color: #16a085;
-             margin-top: 10px;
-             margin-bottom: 5px;
-         }
 
-        .description {
+        .input-area {
             margin-bottom: 30px;
-            text-align: center;
-            color: #555;
-            font-size: 1.1em;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-            display: flex; /* Align textarea and button nicely */
+            display: flex;
             flex-direction: column;
             align-items: center;
         }
 
         textarea {
-            width: 95%; /* Slightly less than 100% */
+            width: 95%;
             padding: 12px;
-            border: 1px solid #ccc; /* Lighter border */
+            border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 16px;
-            resize: vertical;
-            min-height: 70px;
+            min-height: 60px;
             margin-bottom: 15px;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
-        }
-
-        .button-container {
-            display: flex;
-            gap: 10px; /* Space between buttons */
         }
 
         button {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 10px 20px; /* Slightly smaller padding */
+            padding: 10px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
-            transition: background-color 0.3s, transform 0.1s;
-            display: inline-block; /* Allow side-by-side */
-            /* margin: 0 auto; */ /* Removed */
+            transition: background-color 0.3s;
         }
-
-        button:hover {
-            background-color: #2980b9;
-        }
-         button:active {
-             transform: scale(0.98); /* Click effect */
-         }
-
-        button:disabled {
-            background-color: #bdc3c7; /* Lighter disabled color */
-            cursor: not-allowed;
-        }
-
-        #reset-btn {
-             background-color: #e74c3c;
-        }
-         #reset-btn:hover {
-             background-color: #c0392b;
-         }
-
-
-        .results {
-            margin-top: 30px;
-            display: none; /* Hide initially */
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-
-        .analysis-section {
-            margin-bottom: 25px;
-            padding: 15px;
-            background-color: #fdfefe;
-            border: 1px solid #ecf0f1;
-            border-radius: 6px;
-        }
-
-
-        .frame {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border-left: 4px solid #3498db;
-            font-size: 0.95em;
-        }
-        .frame p {
-            margin: 5px 0;
-        }
-        .frame strong {
-            color: #34495e;
-        }
-
-        /* Specific style for Analysis 2 frames */
-         .frame-analysis-2 {
-             border-left-color: #9b59b6; /* Different color */
-         }
-
-        .synthesis-section p, .synthesis-section ul {
-             margin: 10px 0;
-         }
-         .synthesis-section ul {
-             padding-left: 20px;
-         }
-         .synthesis-section li {
-             margin-bottom: 5px;
-         }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
 
         .loader {
-            border: 5px solid #f3f3f3; /* Light grey */
-            border-top: 5px solid #3498db; /* Blue */
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1.5s linear infinite;
-            margin: 30px auto;
-            display: none; /* Hidden by default */
+            margin: 20px auto;
+            display: none;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .message { /* Generic message styling */
+        .message {
             text-align: center;
             margin-top: 15px;
             padding: 10px;
             border-radius: 4px;
-            display: none; /* Hidden by default */
+            display: none;
         }
-        .error {
-            color: #c0392b;
-            background-color: #f9eaea;
-            border: 1px solid #e74c3c;
+        .error { color: #c0392b; background-color: #f9eaea; border: 1px solid #e74c3c; }
+        .success { color: #27ae60; background-color: #eafaf1; border: 1px solid #a9dfbf; }
+
+        /* Graph Visualization */
+        .graph-visualization-area {
+            margin-top: 30px;
+            display: none; /* Hidden initially */
         }
-         .warning {
-            color: #d35400;
-            background-color: #fef5e7;
-            border: 1px solid #f39c12;
+
+        .graph-flow {
+            display: flex;
+            justify-content: space-around; /* Adjust as needed */
+            align-items: flex-start; /* Align items at the top */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
         }
-         .info {
-             color: #2980b9;
-             background-color: #eaf2f8;
-             border: 1px solid #aed6f1;
-         }
+
+        .graph-node {
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-width: 150px; /* Ensure nodes have some width */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .graph-node:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .graph-node.active {
+            border-color: #3498db;
+            background-color: #ddeeff;
+            font-weight: bold;
+        }
+        .graph-node.error-node { border-left: 5px solid #e74c3c; background-color: #fcefee; }
+        .graph-node.success-node { border-left: 5px solid #2ecc71; background-color: #e6f7f0; }
+
+        .node-connector { /* Simple visual cue, not a real line */
+            align-self: center;
+            font-size: 1.5em;
+            color: #adb5bd;
+            padding: 0 5px;
+        }
+
+
+        .node-details-area {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fdfefe;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            min-height: 100px;
+        }
+        .node-details-area h3 { text-align: left; margin-top: 0;}
+        .node-details-area pre {
+            background-color: #2c3e50; /* Dark background for code */
+            color: #f8f9fa; /* Light text */
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.9em;
+            white-space: pre-wrap; /* Allow wrapping */
+            word-wrap: break-word; /* Break long words */
+        }
+
+        .final-output-area {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e6f7ff; /* Light blue background */
+            border: 1px solid #aed6f1;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .final-output-area h3 { color: #1f618d; }
+        .final-output-area p { font-size: 1.1em; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>News Frame Analysis</h1>
-        <p class="description">
-            Enter a news headline to see how different AI agents might analyze its underlying cognitive frames and compare their findings.
-        </p>
+        <h1>LangGraph News Frames Visualizer</h1>
 
-        <div class="input-group">
+        <div class="input-area">
             <textarea id="headline-input" placeholder="Enter a news headline here..." rows="3"></textarea>
-            <div class="button-container">
-                 <button id="generate-btn">Analyze Frames</button>
-                 <button id="reset-btn" style="display: none;">Reset</button>
-            </div>
+            <button id="generate-btn">Analyze with LangGraph</button>
         </div>
 
         <div id="loader" class="loader"></div>
-        <div id="error-message" class="message error"></div> <!-- General error display -->
-        <div id="info-message" class="message info"></div> <!-- For info like 'no frames found' -->
+        <div id="error-message" class="message error"></div>
+        <div id="status-message" class="message"></div> <!-- For general status/success -->
 
-        <!-- Results Area -->
-        <div id="results" class="results">
-             <h2>Analysis Results</h2>
-
-            <!-- Synthesis Output -->
-                <div id="synthesis-output" class="analysis-section synthesis-section">
-                <h3>Synthesis & Comparison</h3>
-                <!-- Content dynamically added here -->
+        <div class="graph-visualization-area" id="graph-viz-area">
+            <h2>Graph Execution Flow</h2>
+            <div class="graph-flow">
+                <div class="graph-node" data-node-key="input_headline" id="node-input">Input Headline</div>
+                <span class="node-connector">→</span>
+                <div class="graph-node" data-node-key="parallel_analyzers" id="node-analyzers">1. Parallel Analyzers</div>
+                <span class="node-connector">→</span>
+                <div class="graph-node" data-node-key="synthesizer" id="node-synthesizer">2. Synthesizer</div>
+                <span class="node-connector">→</span>
+                <div class="graph-node" data-node-key="saver" id="node-saver">3. Save to DB</div>
             </div>
 
-             <!-- Analysis 1 Output -->
-             <div id="analysis-1-output" class="analysis-section">
-                 <h3>Analysis 1 (Detailed)</h3>
-                 <!-- Content dynamically added here -->
-             </div>
+            <div class="node-details-area" id="node-details">
+                <h3>Node Details</h3>
+                <p>Click on a node in the graph above to see its output.</p>
+                <pre id="node-output-pre">{}</pre>
+            </div>
 
-             <!-- Analysis 2 Output -->
-             <div id="analysis-2-output" class="analysis-section">
-                 <h3>Analysis 2 (Simplified)</h3>
-                 <!-- Content dynamically added here -->
-             </div>
-
-
+            <div class="final-output-area" id="final-output">
+                <h3>Final Flipped Headline</h3>
+                <p id="flipped-headline-text">Pending analysis...</p>
+                <p id="db-save-status-text"></p>
+            </div>
         </div>
     </div>
 
     <script>
-        // Get references to DOM elements
         const headlineInput = document.getElementById('headline-input');
         const generateBtn = document.getElementById('generate-btn');
-        const resetBtn = document.getElementById('reset-btn');
-        const resultsContainer = document.getElementById('results');
         const loader = document.getElementById('loader');
         const errorMessage = document.getElementById('error-message');
-        const infoMessage = document.getElementById('info-message');
+        const statusMessage = document.getElementById('status-message');
 
-        // Output containers
-        const analysis1Container = document.getElementById('analysis-1-output');
-        const analysis2Container = document.getElementById('analysis-2-output');
-        const synthesisContainer = document.getElementById('synthesis-output');
+        const graphVizArea = document.getElementById('graph-viz-area');
+        const graphNodes = document.querySelectorAll('.graph-node');
+        const nodeDetailsContainer = document.getElementById('node-details');
+        const nodeOutputPre = document.getElementById('node-output-pre');
+        
+        const finalOutputArea = document.getElementById('final-output');
+        const flippedHeadlineText = document.getElementById('flipped-headline-text');
+        const dbSaveStatusText = document.getElementById('db-save-status-text');
 
-        // Helper function to escape HTML for security
+        let currentGraphState = null; // To store the full graph_output
+
+        // --- Helper Functions ---
         function escapeHtml(unsafe) {
-            if (unsafe === null || typeof unsafe === 'undefined') {
-                return '';
-            }
-            // Ensure it's a string before replacing
-            return unsafe
-                .toString()
-                    .replace(/&/g, "&")  // Replace & with &
-                    .replace(/</g, "<")   // Replace < with <
-                    .replace(/>/g, ">")   // Replace > with >
-                    .replace(/"/g, "\"") // Replace " with "
-                    .replace(/'/g, "'"); // Replace ' with '
-                }
-
-        // Function to display messages (error, warning, info)
-        function showMessage(element, text, type = 'error') {
-             element.textContent = text;
-             element.className = `message ${type}`; // Set class for styling
-             element.style.display = 'block';
+            if (unsafe === null || typeof unsafe === 'undefined') return '';
+            return unsafe.toString()
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, """)
+                .replace(/'/g, "'");
         }
 
-         // Function to hide messages
-         function hideMessages() {
-             errorMessage.style.display = 'none';
-             infoMessage.style.display = 'none';
-         }
+        function showUIMessage(element, text, type = 'error') {
+            element.textContent = text;
+            element.className = `message ${type}`;
+            element.style.display = 'block';
+        }
+        function hideUIMessages() {
+            errorMessage.style.display = 'none';
+            statusMessage.style.display = 'none';
+        }
 
-
-        // Event Listener for Generate Button
+        // --- Event Listeners ---
         generateBtn.addEventListener('click', async () => {
             const headline = headlineInput.value.trim();
-
             if (!headline) {
-                showMessage(errorMessage, "Please enter a headline first.", "error");
+                showUIMessage(errorMessage, "Please enter a headline.");
                 return;
             }
 
-            // UI updates for loading state
-            hideMessages(); // Hide previous messages
+            hideUIMessages();
             loader.style.display = "block";
             generateBtn.disabled = true;
-            resultsContainer.style.display = "none"; // Hide old results
-            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Reset headers
-            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
-            synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
+            graphVizArea.style.display = "none"; // Hide old viz
+            nodeOutputPre.textContent = "{}"; // Reset details
+            flippedHeadlineText.textContent = "Pending analysis...";
+            dbSaveStatusText.textContent = "";
+            graphNodes.forEach(n => n.classList.remove('active', 'error-node', 'success-node'));
 
 
             try {
-                // Call the Netlify function (make sure the path is correct)
-                const response = await fetch('/.netlify/functions/generate-frames', { // Adjusted path
+                const response = await fetch('/.netlify/functions/generate-frames', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ headline })
                 });
 
-                const data = await response.json(); // Try to parse JSON regardless of status
+                const responseData = await response.json();
 
                 if (!response.ok) {
-                    // Use error message from backend JSON if available, otherwise use status text
-                    const errorText = data?.message || data?.error || `Request failed with status ${response.status}`;
-                    throw new Error(errorText);
+                    throw new Error(responseData.error || responseData.message || `Request failed: ${response.status}`);
+                }
+                
+                if (responseData.error_summary || (responseData.graph_output && Object.values(responseData.graph_output).some(v => v && v.error))) {
+                    showUIMessage(statusMessage, responseData.message || "Processing completed with some issues.", "warning");
+                } else {
+                    showUIMessage(statusMessage, responseData.message || "Processing successful!", "success");
                 }
 
-                // Process and display the structured results
-                displayResults(data);
-
-                // Show results and reset button, hide generate button
-                resultsContainer.style.display = "block";
-                resetBtn.style.display = "inline-block"; // Use inline-block now
-                // generateBtn.style.display = "none"; // Keep Generate visible but disabled until Reset? Or hide:
-                generateBtn.style.display = 'none';
-
+                currentGraphState = responseData.graph_output;
+                displayGraphResults(currentGraphState);
+                graphVizArea.style.display = "block";
 
             } catch (error) {
-                showMessage(errorMessage, `Error: ${error.message}`, "error");
-                console.error("Error during fetch or processing:", error);
+                showUIMessage(errorMessage, `Error: ${error.message}`);
+                console.error("Error during analysis:", error);
+                currentGraphState = null; // Clear state on error
             } finally {
                 loader.style.display = "none";
-                generateBtn.disabled = false; // Re-enable button even on error
+                generateBtn.disabled = false;
             }
         });
 
-        // Event Listener for Reset Button
-        resetBtn.addEventListener('click', () => {
-            // Clear input and results containers
-            headlineInput.value = "";
-            analysis1Container.innerHTML = '<h3>Analysis 1 (Detailed)</h3>'; // Keep headers
-            analysis2Container.innerHTML = '<h3>Analysis 2 (Simplified)</h3>';
-            synthesisContainer.innerHTML = '<h3>Synthesis & Comparison</h3>';
+        graphNodes.forEach(node => {
+            node.addEventListener('click', () => {
+                if (!currentGraphState) return;
 
-            // Hide results and reset button, show generate button
-            resultsContainer.style.display = "none";
-            resetBtn.style.display = "none";
-            generateBtn.style.display = "inline-block"; // Use inline-block now
-             generateBtn.disabled = false; // Ensure Generate is enabled
-            hideMessages(); // Hide any error/info messages
+                graphNodes.forEach(n => n.classList.remove('active'));
+                node.classList.add('active');
+
+                const nodeKey = node.dataset.nodeKey;
+                let detailsToShow = {};
+
+                // The state keys are: input_headline, analysis1_result, analysis2_result, synthesis_result, flipped_headline, db_save_status
+                // Map graph node clicks to the relevant parts of the state
+                switch(nodeKey) {
+                    case 'input_headline':
+                        detailsToShow = { input_headline: currentGraphState.input_headline };
+                        break;
+                    case 'parallel_analyzers':
+                        // Show both analysis1_result and analysis2_result as they are outputs of this conceptual step
+                        detailsToShow = {
+                            analysis1_result: currentGraphState.analysis1_result,
+                            analysis2_result: currentGraphState.analysis2_result
+                        };
+                        break;
+                    case 'synthesizer':
+                        detailsToShow = { synthesis_result: currentGraphState.synthesis_result };
+                        break;
+                    case 'saver':
+                        detailsToShow = { db_save_status: currentGraphState.db_save_status };
+                        break;
+                    default:
+                        detailsToShow = { message: "No specific data for this conceptual node." };
+                }
+                nodeOutputPre.textContent = JSON.stringify(detailsToShow, null, 2);
+                nodeDetailsContainer.querySelector('h3').textContent = `Details for: ${node.textContent}`;
+            });
         });
 
-        // Function to Display the Structured Results
-        function displayResults(resultData) {
-            console.log("Data received for display:", resultData); // Log received data
+        // --- Display Logic ---
+        function displayGraphResults(graphData) {
+            if (!graphData) return;
 
-             hideMessages(); // Clear any previous general messages
-
-            // --- Process and Display Analysis 1 ---
-            if (resultData.analysis_1) {
-                if (resultData.analysis_1.error) {
-                    // Agent 1 failed, display the error message within its section
-                    analysis1Container.innerHTML += `<p class="message error"><strong>Analysis 1 Error:</strong> ${escapeHtml(resultData.analysis_1.error)}</p>`;
-                } else if (Array.isArray(resultData.analysis_1.frames)) { // Check if frames is an array
-                    if (resultData.analysis_1.frames.length > 0) {
-                        resultData.analysis_1.frames.forEach((frame, index) => {
-                            const frameElement = document.createElement('div');
-                            frameElement.className = 'frame frame-analysis-1'; // Added specific class
-                            frameElement.innerHTML = `
-                                <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
-                                <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
-                                <p><strong>Linguistic Indicators:</strong> ${escapeHtml(frame.linguistic_indicators || 'N/A')}</p>
-                                <p><strong>Agent:</strong> ${escapeHtml(frame.agent_patient_analysis?.agent || 'N/A')}</p>
-                                <p><strong>Patient:</strong> ${escapeHtml(frame.agent_patient_analysis?.patient || 'N/A')}</p>
-                                <p><strong>Context:</strong> ${escapeHtml(frame.contextual_elements || 'N/A')}</p>
-                                <p><strong>Summary:</strong> ${escapeHtml(frame.summary || 'N/A')}</p>
-                            `;
-                            analysis1Container.appendChild(frameElement);
-                        });
-                    } else {
-                         analysis1Container.innerHTML += '<p class="message info">No frames identified by Analysis 1.</p>';
-                    }
-                } else {
-                    // analysis_1 exists, no error, but 'frames' is missing or not an array
-                    analysis1Container.innerHTML += `<p class="message warning">Warning: Analysis 1 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_1, null, 2))}</pre>`;
-                     console.warn("Analysis 1 data structure issue:", resultData.analysis_1);
-                }
+            // Update final flipped headline and DB status
+            flippedHeadlineText.textContent = escapeHtml(graphData.flipped_headline || "N/A");
+            if (graphData.db_save_status) {
+                dbSaveStatusText.textContent = graphData.db_save_status.success 
+                    ? `Database: Saved successfully.`
+                    : `Database: Save failed. ${escapeHtml(graphData.db_save_status.message || '')}`;
+                dbSaveStatusText.style.color = graphData.db_save_status.success ? 'green' : 'red';
             } else {
-                analysis1Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 1.</p>';
+                dbSaveStatusText.textContent = "Database: Status N/A";
             }
 
-            // --- Process and Display Analysis 2 ---
-             if (resultData.analysis_2) {
-                if (resultData.analysis_2.error) {
-                    analysis2Container.innerHTML += `<p class="message error"><strong>Analysis 2 Error:</strong> ${escapeHtml(resultData.analysis_2.error)}</p>`;
-                } else if (Array.isArray(resultData.analysis_2.frames)) {
-                     if (resultData.analysis_2.frames.length > 0) {
-                        resultData.analysis_2.frames.forEach((frame, index) => {
-                            const frameElement = document.createElement('div');
-                            frameElement.className = 'frame frame-analysis-2'; // Added specific class
-                            frameElement.innerHTML = `
-                                <h4>Frame ${index + 1}: ${escapeHtml(frame.frame_type || 'N/A')}</h4>
-                                <p><strong>Keywords:</strong> ${escapeHtml(Array.isArray(frame.keywords) ? frame.keywords.join(', ') : 'N/A')}</p>
-                                <p><strong>Agent:</strong> ${escapeHtml(frame.agent || 'N/A')}</p>
-                                <p><strong>Action:</strong> ${escapeHtml(frame.action || 'N/A')}</p>
-                                <p><strong>Patient:</strong> ${escapeHtml(frame.patient || 'N/A')}</p>
-                                <p><strong>Context Cues:</strong> ${escapeHtml(Array.isArray(frame.contextual_cues) ? frame.contextual_cues.join(', ') : 'N/A')}</p>
-                            `;
-                            analysis2Container.appendChild(frameElement);
-                        });
-                     } else {
-                         analysis2Container.innerHTML += '<p class="message info">No frames identified by Analysis 2.</p>';
-                     }
-                } else {
-                    analysis2Container.innerHTML += `<p class="message warning">Warning: Analysis 2 returned unexpected data structure.</p><pre>${escapeHtml(JSON.stringify(resultData.analysis_2, null, 2))}</pre>`;
-                    console.warn("Analysis 2 data structure issue:", resultData.analysis_2);
-                }
-            } else {
-                analysis2Container.innerHTML += '<p class="message error">Error: No data returned for Analysis 2.</p>';
+            // Visually update nodes based on success/error (simplified)
+            // Input node is always "success" if we reached here
+            document.getElementById('node-input').classList.add('success-node');
+
+            // Parallel Analyzers (conceptual node)
+            const analyzersNode = document.getElementById('node-analyzers');
+            if (graphData.analysis1_result?.error || graphData.analysis2_result?.error) {
+                analyzersNode.classList.add('error-node');
+            } else if (graphData.analysis1_result || graphData.analysis2_result) {
+                analyzersNode.classList.add('success-node');
             }
 
-            // --- Process and Display Synthesis ---
-            if (resultData.synthesis) {
-                 if (resultData.synthesis.error) { // Check if synthesis itself had an error (e.g., model failed)
-                     synthesisContainer.innerHTML += `<p class="message error"><strong>Synthesis Error:</strong> ${escapeHtml(resultData.synthesis.error)}</p>`;
-                 } else {
-                     const summary = escapeHtml(resultData.synthesis.flipped_headline || 'N/A');
-                     const similaritiesList = Array.isArray(resultData.synthesis.key_similarities) && resultData.synthesis.key_similarities.length > 0
-                         ? resultData.synthesis.key_similarities.map(s => `<li>${escapeHtml(s)}</li>`).join('')
-                         : '<li>None listed or N/A</li>';
-                     const differencesList = Array.isArray(resultData.synthesis.key_differences) && resultData.synthesis.key_differences.length > 0
-                         ? resultData.synthesis.key_differences.map(d => `<li>${escapeHtml(d)}</li>`).join('')
-                         : '<li>None listed or N/A</li>';
-
-                    let synthesisContent = `
-                        <p><strong>Flipped Headline:</strong> ${summary}</p>
-                        <p><strong>Key Similarities:</strong></p>
-                        <ul>${similaritiesList}</ul>
-                        <p><strong>Key Differences:</strong></p>
-                        <ul>${differencesList}</ul>
-                     `;
-
-                     // Add notes if agents had errors during their generation
-                     if (resultData.synthesis.agent1_had_error) {
-                         synthesisContent += '<p class="message warning">Note: Analysis 1 encountered an error during its generation process.</p>';
-                     }
-                     if (resultData.synthesis.agent2_had_error) {
-                         synthesisContent += '<p class="message warning">Note: Analysis 2 encountered an error during its generation process.</p>';
-                     }
-                     synthesisContainer.innerHTML += synthesisContent;
-                 }
-            } else {
-                 synthesisContainer.innerHTML += '<p class="message error">Error: No synthesis data returned.</p>';
+            // Synthesizer Node
+            const synthesizerNode = document.getElementById('node-synthesizer');
+            if (graphData.synthesis_result?.error) {
+                synthesizerNode.classList.add('error-node');
+            } else if (graphData.synthesis_result) {
+                synthesizerNode.classList.add('success-node');
             }
+            
+            // Saver Node
+            const saverNode = document.getElementById('node-saver');
+            if (graphData.db_save_status && !graphData.db_save_status.success) {
+                saverNode.classList.add('error-node');
+            } else if (graphData.db_save_status && graphData.db_save_status.success) {
+                saverNode.classList.add('success-node');
+            }
+
+            // Automatically click the input node to show initial details
+            document.getElementById('node-input').click();
         }
 
     </script>
