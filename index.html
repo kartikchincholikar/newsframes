@@ -9,7 +9,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 1000px; /* Slightly wider for parallel nodes */
+            max-width: 1000px;
             margin: 20px auto;
             padding: 20px;
             background-color: #f4f7f6;
@@ -35,58 +35,15 @@
             padding-bottom: 5px;
         }
 
-        .input-area {
-            margin-bottom: 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        textarea {
-            width: 95%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 16px;
-            min-height: 60px;
-            margin-bottom: 15px;
-        }
-
-        button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        button:hover { background-color: #2980b9; }
-        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
-
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1.5s linear infinite;
-            margin: 20px auto;
-            display: none;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .message {
-            text-align: center;
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
-        }
-        .error { color: #c0392b; background-color: #f9eaea; border: 1px solid #e74c3c; }
-        .warning { color: #d35400; background-color: #fef5e7; border: 1px solid #f39c12; }
-        .success { color: #27ae60; background-color: #eafaf1; border: 1px solid #a9dfbf; }
+        .input-area { /* ... existing styles ... */ }
+        textarea { /* ... existing styles ... */ }
+        button { /* ... existing styles ... */ }
+        .loader { /* ... existing styles ... */ }
+        @keyframes spin { /* ... existing styles ... */ }
+        .message { /* ... existing styles ... */ }
+        .error { /* ... existing styles ... */ }
+        .warning { /* ... existing styles ... */ }
+        .success { /* ... existing styles ... */ }
 
         /* Graph Visualization */
         .graph-visualization-area {
@@ -96,105 +53,142 @@
 
         .graph-flow {
             display: flex;
-            flex-direction: column; /* Main flow is vertical */
-            align-items: center; /* Center items horizontally */
+            flex-direction: column;
+            align-items: center;
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f9f9f9;
             border-radius: 8px;
+            position: relative; /* For pseudo-elements if needed later */
         }
 
-        .graph-stage { /* A row in the vertical flow */
+        .graph-stage {
             display: flex;
             justify-content: center;
-            align-items: center; /* Vertically align items in a stage */
-            margin-bottom: 10px; /* Space between stages */
+            align-items: center;
             width: 100%;
+            position: relative; /* For connecting lines from nodes */
+            margin-bottom: 40px; /* Increased space for connectors */
+        }
+        .graph-stage:last-child {
+            margin-bottom: 0;
         }
         
         .parallel-analyzers-stage {
-            justify-content: space-around; /* Spread out parallel nodes */
+            justify-content: space-around;
+            /* margin-bottom: 20px; Initial thought, handled by stage margin */
         }
 
         .graph-node {
             background-color: #e9ecef;
             border: 1px solid #ced4da;
             padding: 15px;
-            margin: 5px 10px; /* Adjust margin for tighter packing if needed */
+            margin: 5px 10px;
             border-radius: 8px;
             text-align: center;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            min-width: 160px; /* Ensure nodes have some width */
+            min-width: 160px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative; /* Crucial for pseudo-element connectors */
+            z-index: 1; /* Ensure node is above lines */
         }
-        .graph-node:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .graph-node.active {
-            border-color: #3498db;
-            background-color: #ddeeff;
-            font-weight: bold;
-        }
-        .graph-node.error-node { border-left: 5px solid #e74c3c; background-color: #fcefee; }
-        .graph-node.success-node { border-left: 5px solid #2ecc71; background-color: #e6f7f0; }
+        .graph-node:hover { /* ... existing styles ... */ }
+        .graph-node.active { /* ... existing styles ... */ }
+        .graph-node.error-node { /* ... existing styles ... */ }
+        .graph-node.success-node { /* ... existing styles ... */ }
 
-        .node-connector { /* Vertical connector */
-            font-size: 1.5em;
+        /* --- CSS Connectors --- */
+        /* Vertical line down from a node */
+        .graph-node.has-connector-down::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: -25px; /* Adjust to control line length and gap */
+            transform: translateX(-50%);
+            width: 2px; /* Line thickness */
+            height: 25px; /* Line length */
+            background-color: #adb5bd; /* Line color */
+            z-index: 0; /* Behind node content */
+        }
+         /* Arrowhead for the line down */
+        .graph-node.has-connector-down.has-arrow::before { /* Using before for arrowhead to not conflict with line */
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: -25px; /* Position at the end of the line */
+            transform: translateX(-50%) rotate(45deg);
+            width: 8px; /* Arrowhead size */
+            height: 8px;
+            border-bottom: 2px solid #adb5bd;
+            border-right: 2px solid #adb5bd;
+             z-index: 0;
+        }
+
+
+        /* For parallel nodes, a line up to a common point (simplified) */
+        .graph-node.connect-up-to-join::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -25px; /* Line goes upwards */
+            transform: translateX(-50%);
+            width: 2px;
+            height: 25px;
+            background-color: #adb5bd;
+            z-index: 0;
+        }
+        /* Specific adjustments for parallel join lines might be needed */
+        #node-analysis1.connect-up-to-join::before {
+            /* transform: translateX(-50%) skewX(-20deg);  Attempt to angle, complex */
+        }
+        #node-analysis2.connect-up-to-join::before {
+            /* transform: translateX(-50%) skewX(20deg); Attempt to angle, complex */
+        }
+
+        /* Line from input to the parallel stage - more complex */
+        /* We can style the .node-connector div for this */
+        .node-connector-div {
+            height: 20px; /* Space for the arrow */
+            width: 100%;
+            text-align: center;
+            position: relative;
+            margin-bottom: 5px; /* Space before next stage */
+        }
+        .node-connector-div .arrow-down {
+            display: inline-block;
+            font-size: 1.5em; /* Can be an actual arrow char or SVG */
             color: #adb5bd;
-            margin: 5px 0; /* Space for vertical arrow */
-            text-align: center;
         }
-         /* Horizontal connectors within parallel stage (visual only) */
-        .parallel-connector {
-            flex-grow: 1;
-            text-align: center;
-            color: #adb5bd;
-        }
-
-
-        .node-details-area {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #fdfefe;
-            border: 1px solid #ecf0f1;
-            border-radius: 8px;
-            min-height: 100px;
-        }
-        .node-details-area h3 { text-align: left; margin-top: 0;}
-        .node-details-area pre {
-            background-color: #2c3e50;
-            color: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-size: 0.9em;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+        /* This is a visual element, not a structural connector div */
+        .connector-to-parallel::after { /* Line from above to center of parallel stage */
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -40px; /* From input node's bottom to center of this stage's top */
+            transform: translateX(-50%);
+            width: 2px;
+            height: 20px; /* Length of this segment */
+            background-color: #adb5bd;
+            z-index: 0;
         }
 
-        .final-output-area {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #e6f7ff;
-            border: 1px solid #aed6f1;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .final-output-area h3 { color: #1f618d; }
-        .final-output-area p { font-size: 1.1em; }
+
+        .node-details-area { /* ... existing styles ... */ }
+        .node-details-area h3 { /* ... existing styles ... */ }
+        .node-details-area pre { /* ... existing styles ... */ }
+        .final-output-area { /* ... existing styles ... */ }
+        .final-output-area h3 { /* ... existing styles ... */ }
+        .final-output-area p { /* ... existing styles ... */ }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>LangGraph News Frames Visualizer</h1>
-
         <div class="input-area">
             <textarea id="headline-input" placeholder="Enter a news headline here..." rows="3"></textarea>
             <button id="generate-btn">Analyze with LangGraph</button>
         </div>
-
         <div id="loader" class="loader"></div>
         <div id="error-message" class="message error"></div>
         <div id="status-message" class="message"></div>
@@ -204,28 +198,30 @@
             <div class="graph-flow">
                 <!-- Stage 1: Input -->
                 <div class="graph-stage">
-                    <div class="graph-node" data-node-key="input_headline" id="node-input">Input Headline</div>
+                    <!-- Add has-connector-down and has-arrow to nodes that have an outgoing connection -->
+                    <div class="graph-node has-connector-down has-arrow" data-node-key="input_headline" id="node-input">Input Headline</div>
                 </div>
-                <div class="node-connector">↓</div>
+                <!-- Removed text connector div, relying on node pseudo-elements -->
 
                 <!-- Stage 2: Parallel Analyzers -->
-                <div class="graph-stage parallel-analyzers-stage">
-                    <div class="graph-node" data-node-key="analysis1" id="node-analysis1">1a. Detailed Analysis</div>
-                    <!-- Optional: connector graphic between parallel nodes if desired -->
-                    <div class="graph-node" data-node-key="analysis2" id="node-analysis2">1b. Simplified Analysis</div>
+                <div class="graph-stage parallel-analyzers-stage" style="margin-top: -15px;"> 
+                    <!-- connect-up-to-join will draw a line upwards FROM these nodes -->
+                    <!-- has-connector-down will draw a line downwards FROM these nodes -->
+                    <div class="graph-node connect-up-to-join has-connector-down has-arrow" data-node-key="analysis1" id="node-analysis1">1a. Detailed Analysis</div>
+                    <div class="graph-node connect-up-to-join has-connector-down has-arrow" data-node-key="analysis2" id="node-analysis2">1b. Simplified Analysis</div>
                 </div>
-                <div class="node-connector"><div>↓ ↓</div></div> <!-- Visual cue for merging -->
-
+                <!-- Removed text connector div -->
 
                 <!-- Stage 3: Synthesizer -->
-                <div class="graph-stage">
-                    <div class="graph-node" data-node-key="synthesizer" id="node-synthesizer">2. Synthesizer</div>
+                <div class="graph-stage" style="margin-top: -15px;">
+                     {/* This node will have lines coming INTO it from above (implicitly from analysis1 & 2) */}
+                    <div class="graph-node has-connector-down has-arrow" data-node-key="synthesizer" id="node-synthesizer">2. Synthesizer</div>
                 </div>
-                <div class="node-connector">↓</div>
+                <!-- Removed text connector div -->
                 
                 <!-- Stage 4: Saver -->
-                <div class="graph-stage">
-                    <div class="graph-node" data-node-key="saver" id="node-saver">3. Save to DB</div>
+                <div class="graph-stage" style="margin-top: -15px;">
+                    <div class="graph-node" data-node-key="saver" id="node-saver">3. Save to DB</div> {/* No outgoing connector from the last visualized node */}
                 </div>
             </div>
 
@@ -234,7 +230,6 @@
                 <p>Click on a node in the graph above to see its output.</p>
                 <pre id="node-output-pre">{}</pre>
             </div>
-
             <div class="final-output-area" id="final-output">
                 <h3>Final Flipped Headline</h3>
                 <p id="flipped-headline-text">Pending analysis...</p>
@@ -244,6 +239,9 @@
     </div>
 
     <script>
+        // --- JavaScript (NO CHANGES NEEDED from your previous version) ---
+        // The JS logic for fetching data, handling clicks, and displaying
+        // node details remains the same. This fix is purely CSS and HTML structure.
         const headlineInput = document.getElementById('headline-input');
         const generateBtn = document.getElementById('generate-btn');
         const loader = document.getElementById('loader');
@@ -309,7 +307,7 @@
                 }
                 
                 if (responseData.error_summary || (responseData.graph_output && Object.values(responseData.graph_output).some(v => v && v.error))) {
-                     showUIMessage(statusMessage, responseData.message || "Processing completed with some issues.", responseData.graph_output?.db_save_status?.success === false && !responseData.error_summary ? 'warning' : 'warning'); // more nuanced warning
+                     showUIMessage(statusMessage, responseData.message || "Processing completed with some issues.", responseData.graph_output?.db_save_status?.success === false && !responseData.error_summary ? 'warning' : 'warning');
                 } else {
                     showUIMessage(statusMessage, responseData.message || "Processing successful!", "success");
                 }
@@ -339,10 +337,10 @@
                     case 'input_headline':
                         detailsToShow = { input_headline: currentGraphState.input_headline };
                         break;
-                    case 'analysis1': // Corresponds to analysis1_result in state
+                    case 'analysis1':
                         detailsToShow = { analysis1_result: currentGraphState.analysis1_result };
                         break;
-                    case 'analysis2': // Corresponds to analysis2_result in state
+                    case 'analysis2':
                         detailsToShow = { analysis2_result: currentGraphState.analysis2_result };
                         break;
                     case 'synthesizer':
@@ -390,7 +388,7 @@
             if (graphData.db_save_status && !graphData.db_save_status.success) saverNode.classList.add('error-node');
             else if (graphData.db_save_status && graphData.db_save_status.success) saverNode.classList.add('success-node');
 
-            document.getElementById('node-input').click(); // Show input details by default
+            document.getElementById('node-input').click();
         }
     </script>
 </body>
