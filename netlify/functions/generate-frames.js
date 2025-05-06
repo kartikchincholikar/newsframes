@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch');
-const { StateGraph, END } = require('langgraph');
+const { StateGraph, END } = require('@langchain/langgraph');
 
 // --- AWS Configuration ---
 AWS.config.update({
