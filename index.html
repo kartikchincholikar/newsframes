@@ -9,7 +9,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 1000px; /* Slightly wider for parallel nodes */
+            max-width: 1000px;
             margin: 20px auto;
             padding: 20px;
             background-color: #f4f7f6;
@@ -88,7 +88,6 @@
         .warning { color: #d35400; background-color: #fef5e7; border: 1px solid #f39c12; }
         .success { color: #27ae60; background-color: #eafaf1; border: 1px solid #a9dfbf; }
 
-        /* Graph Visualization */
         .graph-visualization-area {
             margin-top: 30px;
             display: none;
@@ -96,36 +95,36 @@
 
         .graph-flow {
             display: flex;
-            flex-direction: column; /* Main flow is vertical */
-            align-items: center; /* Center items horizontally */
+            flex-direction: column;
+            align-items: center;
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f9f9f9;
             border-radius: 8px;
         }
 
-        .graph-stage { /* A row in the vertical flow */
+        .graph-stage {
             display: flex;
             justify-content: center;
-            align-items: center; /* Vertically align items in a stage */
-            margin-bottom: 10px; /* Space between stages */
+            align-items: center;
+            margin-bottom: 10px;
             width: 100%;
         }
         
-        .parallel-analyzers-stage {
-            justify-content: space-around; /* Spread out parallel nodes */
+        .parallel-group-stage { /* Specific class for stages holding parallel nodes */
+            justify-content: space-around;
         }
 
         .graph-node {
             background-color: #e9ecef;
             border: 1px solid #ced4da;
             padding: 15px;
-            margin: 5px 10px; /* Adjust margin for tighter packing if needed */
+            margin: 5px 10px;
             border-radius: 8px;
             text-align: center;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            min-width: 160px; /* Ensure nodes have some width */
+            min-width: 160px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .graph-node:hover {
@@ -140,19 +139,12 @@
         .graph-node.error-node { border-left: 5px solid #e74c3c; background-color: #fcefee; }
         .graph-node.success-node { border-left: 5px solid #2ecc71; background-color: #e6f7f0; }
 
-        .node-connector { /* Vertical connector */
+        .node-connector {
             font-size: 1.5em;
             color: #adb5bd;
-            margin: 5px 0; /* Space for vertical arrow */
+            margin: 5px 0;
             text-align: center;
         }
-         /* Horizontal connectors within parallel stage (visual only) */
-        .parallel-connector {
-            flex-grow: 1;
-            text-align: center;
-            color: #adb5bd;
-        }
-
 
         .node-details-area {
             margin-top: 20px;
@@ -201,32 +193,8 @@
 
         <div class="graph-visualization-area" id="graph-viz-area">
             <h2>Graph Execution Flow</h2>
-            <div class="graph-flow">
-                <!-- Stage 1: Input -->
-                <div class="graph-stage">
-                    <div class="graph-node" data-node-key="input_headline" id="node-input">Input Headline</div>
-                </div>
-                <div class="node-connector">↓</div>
-
-                <!-- Stage 2: Parallel Analyzers -->
-                <div class="graph-stage parallel-analyzers-stage">
-                    <div class="graph-node" data-node-key="analysis1" id="node-analysis1">1a. Detailed Analysis</div>
-                    <!-- Optional: connector graphic between parallel nodes if desired -->
-                    <div class="graph-node" data-node-key="analysis2" id="node-analysis2">1b. Simplified Analysis</div>
-                </div>
-                <div class="node-connector"><div>↓ ↓</div></div> <!-- Visual cue for merging -->
-
-
-                <!-- Stage 3: Synthesizer -->
-                <div class="graph-stage">
-                    <div class="graph-node" data-node-key="synthesizer" id="node-synthesizer">2. Synthesizer</div>
-                </div>
-                <div class="node-connector">↓</div>
-                
-                <!-- Stage 4: Saver -->
-                <div class="graph-stage">
-                    <div class="graph-node" data-node-key="saver" id="node-saver">3. Save to DB</div>
-                </div>
+            <div class="graph-flow" id="dynamic-graph-flow">
+                <!-- Graph nodes will be dynamically inserted here -->
             </div>
 
             <div class="node-details-area" id="node-details">
@@ -251,7 +219,7 @@
         const statusMessage = document.getElementById('status-message');
 
         const graphVizArea = document.getElementById('graph-viz-area');
-        const graphNodes = document.querySelectorAll('.graph-node');
+        const dynamicGraphFlowContainer = document.getElementById('dynamic-graph-flow');
         const nodeDetailsContainer = document.getElementById('node-details');
         const nodeOutputPre = document.getElementById('node-output-pre');
         
@@ -260,11 +228,12 @@
         const dbSaveStatusText = document.getElementById('db-save-status-text');
 
         let currentGraphState = null;
+        let currentGraphStructure = null;
 
         function escapeHtml(unsafe) {
             if (unsafe === null || typeof unsafe === 'undefined') return '';
             return unsafe.toString()
-                .replace(/&/g, "&")
+                .replace(/&/g, "&") // Ensure & is escaped first
                 .replace(/</g, "<")
                 .replace(/>/g, ">")
                 .replace(/"/g, "\"")
@@ -292,10 +261,13 @@
             loader.style.display = "block";
             generateBtn.disabled = true;
             graphVizArea.style.display = "none";
+            dynamicGraphFlowContainer.innerHTML = ''; // Clear previous dynamic graph
             nodeOutputPre.textContent = "{}";
+            nodeDetailsContainer.querySelector('h3').textContent = "Node Details";
+            nodeDetailsContainer.querySelector('p').style.display = 'block';
             flippedHeadlineText.textContent = "Pending analysis...";
             dbSaveStatusText.textContent = "";
-            graphNodes.forEach(n => n.classList.remove('active', 'error-node', 'success-node'));
+            
 
             try {
                 const response = await fetch('/.netlify/functions/generate-frames', {
@@ -304,64 +276,134 @@
                     body: JSON.stringify({ headline })
                 });
                 const responseData = await response.json();
+
                 if (!response.ok) {
-                    throw new Error(responseData.error || responseData.message || `Request failed: ${response.status}`);
+                    throw new Error(responseData.error || responseData.details || `Request failed: ${response.status}`);
                 }
                 
-                if (responseData.error_summary || (responseData.graph_output && Object.values(responseData.graph_output).some(v => v && v.error))) {
-                     showUIMessage(statusMessage, responseData.message || "Processing completed with some issues.", responseData.graph_output?.db_save_status?.success === false && !responseData.error_summary ? 'warning' : 'warning'); // more nuanced warning
+                currentGraphState = responseData.data;
+                currentGraphStructure = responseData.graphStructure;
+
+                let uiMessageType = 'success';
+                if (currentGraphState && (
+                    (currentGraphState.raw_analysis1 && currentGraphState.raw_analysis1.error) ||
+                    (currentGraphState.raw_analysis2 && currentGraphState.raw_analysis2.error) ||
+                    (currentGraphState.synthesis_details && currentGraphState.synthesis_details.error) ||
+                    (currentGraphState.db_save_status && !currentGraphState.db_save_status.success)
+                )) {
+                    uiMessageType = 'warning';
+                }
+                showUIMessage(statusMessage, responseData.message || "Processing complete.", uiMessageType);
+
+                if (currentGraphStructure && currentGraphState) {
+                    renderGraphFlow(currentGraphStructure);
+                    updateNodeStatusesAndFinalOutput(currentGraphStructure, currentGraphState);
+                    graphVizArea.style.display = "block";
                 } else {
-                    showUIMessage(statusMessage, responseData.message || "Processing successful!", "success");
+                    console.warn("Graph structure or state not received from backend.");
+                    dynamicGraphFlowContainer.innerHTML = '<p>Error: Graph structure or data not available.</p>';
+                     graphVizArea.style.display = "block"; // Show the error message
                 }
 
-                currentGraphState = responseData.graph_output;
-                displayGraphResults(currentGraphState);
-                graphVizArea.style.display = "block";
             } catch (error) {
                 showUIMessage(errorMessage, `Error: ${error.message}`);
                 console.error("Error during analysis:", error);
                 currentGraphState = null;
+                currentGraphStructure = null;
             } finally {
                 loader.style.display = "none";
                 generateBtn.disabled = false;
             }
         });
+        
+        function createNodeElement(id, displayName, detailsKey, statusKey) {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'graph-node';
+            nodeDiv.id = `node-${id}`; // Ensure unique DOM ID from structure
+            nodeDiv.textContent = displayName;
+            nodeDiv.dataset.detailsKey = detailsKey; 
+            nodeDiv.dataset.statusKey = statusKey;   
+            nodeDiv.dataset.nodeDisplayName = displayName; 
+            return nodeDiv;
+        }
 
-        graphNodes.forEach(node => {
-            node.addEventListener('click', () => {
-                if (!currentGraphState) return;
-                graphNodes.forEach(n => n.classList.remove('active'));
-                node.classList.add('active');
-                const nodeKey = node.dataset.nodeKey;
-                let detailsToShow = {};
+        function attachNodeClickListeners() {
+            const allGraphNodes = dynamicGraphFlowContainer.querySelectorAll('.graph-node');
+            allGraphNodes.forEach(node => {
+                node.addEventListener('click', () => {
+                    if (!currentGraphState) return;
 
-                switch(nodeKey) {
-                    case 'input_headline':
-                        detailsToShow = { input_headline: currentGraphState.input_headline };
-                        break;
-                    case 'analysis1': // Corresponds to analysis1_result in state
-                        detailsToShow = { analysis1_result: currentGraphState.analysis1_result };
-                        break;
-                    case 'analysis2': // Corresponds to analysis2_result in state
-                        detailsToShow = { analysis2_result: currentGraphState.analysis2_result };
-                        break;
-                    case 'synthesizer':
-                        detailsToShow = { synthesis_result: currentGraphState.synthesis_result };
-                        break;
-                    case 'saver':
-                        detailsToShow = { db_save_status: currentGraphState.db_save_status };
-                        break;
-                    default:
-                        detailsToShow = { message: "No specific data for this conceptual node." };
-                }
-                nodeOutputPre.textContent = JSON.stringify(detailsToShow, null, 2);
-                nodeDetailsContainer.querySelector('h3').textContent = `Details for: ${node.textContent}`;
+                    allGraphNodes.forEach(n => n.classList.remove('active'));
+                    node.classList.add('active');
+                    nodeDetailsContainer.querySelector('p').style.display = 'none';
+
+
+                    const detailsKey = node.dataset.detailsKey;
+                    const displayName = node.dataset.nodeDisplayName;
+                    let detailsToShow = {};
+
+                    if (detailsKey === "input_headline") { // Special case for input_headline string
+                        detailsToShow = { "input_headline": currentGraphState.input_headline };
+                    } else if (detailsKey && currentGraphState.hasOwnProperty(detailsKey)) {
+                        detailsToShow = { [detailsKey]: currentGraphState[detailsKey] };
+                    } else if (detailsKey) {
+                        detailsToShow = { message: `No data available for ${displayName} (key: ${detailsKey}).` };
+                    } else {
+                        detailsToShow = { message: `No details key configured for ${displayName}.` };
+                    }
+                    
+                    nodeOutputPre.textContent = JSON.stringify(detailsToShow, null, 2);
+                    nodeDetailsContainer.querySelector('h3').textContent = `Details for: ${displayName}`;
+                });
             });
-        });
+        }
 
-        function displayGraphResults(graphData) {
-            if (!graphData) return;
+        function renderGraphFlow(structure) {
+            dynamicGraphFlowContainer.innerHTML = ''; 
 
+            if (!structure || !structure.nodes || structure.nodes.length === 0) {
+                dynamicGraphFlowContainer.textContent = 'No graph structure to display.';
+                return;
+            }
+
+            structure.nodes.forEach((stageInfo, index) => {
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'graph-stage';
+
+                if (stageInfo.type === 'input') {
+                    const nodeDiv = createNodeElement(stageInfo.id, stageInfo.displayName, stageInfo.detailsKey, stageInfo.statusKey);
+                    stageDiv.appendChild(nodeDiv);
+                } else if (stageInfo.type === 'parallel-group') {
+                    stageDiv.classList.add('parallel-group-stage');
+                    stageInfo.subNodes.forEach(subNodeInfo => {
+                        const nodeDiv = createNodeElement(subNodeInfo.id, subNodeInfo.displayName, subNodeInfo.detailsKey, subNodeInfo.statusKey);
+                        stageDiv.appendChild(nodeDiv);
+                    });
+                } else if (stageInfo.type === 'sequential') {
+                    const nodeDiv = createNodeElement(stageInfo.id, stageInfo.displayName, stageInfo.detailsKey, stageInfo.statusKey);
+                    stageDiv.appendChild(nodeDiv);
+                }
+                
+                dynamicGraphFlowContainer.appendChild(stageDiv);
+
+                if (index < structure.nodes.length - 1) {
+                    const connectorDiv = document.createElement('div');
+                    connectorDiv.className = 'node-connector';
+                    if (stageInfo.type === 'parallel-group' && stageInfo.subNodes && stageInfo.subNodes.length > 1) {
+                        connectorDiv.innerHTML = '<div>↓ ↓</div>'; 
+                    } else {
+                        connectorDiv.innerHTML = '↓';
+                    }
+                    dynamicGraphFlowContainer.appendChild(connectorDiv);
+                }
+            });
+            attachNodeClickListeners();
+        }
+
+        function updateNodeStatusesAndFinalOutput(structure, graphData) {
+            if (!structure || !structure.nodes || !graphData) return;
+
+            // Update final output area
             flippedHeadlineText.textContent = escapeHtml(graphData.flipped_headline || "N/A");
             if (graphData.db_save_status) {
                 dbSaveStatusText.textContent = graphData.db_save_status.success 
@@ -370,28 +412,68 @@
                 dbSaveStatusText.style.color = graphData.db_save_status.success ? 'green' : 'red';
             } else {
                 dbSaveStatusText.textContent = "Database: Status N/A";
+                 dbSaveStatusText.style.color = 'inherit';
             }
 
-            document.getElementById('node-input').classList.add('success-node');
+            // Update node statuses
+            structure.nodes.forEach(stageInfo => {
+                const processNode = (nodeInfo) => {
+                    const nodeEl = document.getElementById(`node-${nodeInfo.id}`);
+                    if (!nodeEl) {
+                        console.warn(`Node element 'node-${nodeInfo.id}' not found in DOM.`);
+                        return;
+                    }
+                    nodeEl.classList.remove('success-node', 'error-node'); // Reset classes
 
-            const analysis1Node = document.getElementById('node-analysis1');
-            if (graphData.analysis1_result?.error) analysis1Node.classList.add('error-node');
-            else if (graphData.analysis1_result) analysis1Node.classList.add('success-node');
+                    const statusData = graphData[nodeInfo.statusKey];
 
-            const analysis2Node = document.getElementById('node-analysis2');
-            if (graphData.analysis2_result?.error) analysis2Node.classList.add('error-node');
-            else if (graphData.analysis2_result) analysis2Node.classList.add('success-node');
-            
-            const synthesizerNode = document.getElementById('node-synthesizer');
-            if (graphData.synthesis_result?.error) synthesizerNode.classList.add('error-node');
-            else if (graphData.synthesis_result) synthesizerNode.classList.add('success-node');
-            
-            const saverNode = document.getElementById('node-saver');
-            if (graphData.db_save_status && !graphData.db_save_status.success) saverNode.classList.add('error-node');
-            else if (graphData.db_save_status && graphData.db_save_status.success) saverNode.classList.add('success-node');
+                    if (nodeInfo.type === 'input') { // 'input' is a type of stageInfo, not nodeInfo here
+                         if (graphData.hasOwnProperty(nodeInfo.statusKey) && graphData[nodeInfo.statusKey]) {
+                            nodeEl.classList.add('success-node');
+                        } else {
+                            nodeEl.classList.add('error-node');
+                        }
+                    } else if (statusData) {
+                        if (nodeInfo.statusKey === 'db_save_status') { // Special handling for db_save_status
+                            if (statusData.success) nodeEl.classList.add('success-node');
+                            else nodeEl.classList.add('error-node');
+                        } else if (statusData.error) { // Standard error check for other nodes
+                            nodeEl.classList.add('error-node');
+                        } else {
+                            nodeEl.classList.add('success-node');
+                        }
+                    } else {
+                        nodeEl.classList.add('error-node'); // Data for status key missing, assume error
+                    }
+                };
+                
+                if (stageInfo.type === 'input' || stageInfo.type === 'sequential') {
+                    processNode(stageInfo); // Stage info itself is the node info
+                } else if (stageInfo.type === 'parallel-group') {
+                    stageInfo.subNodes.forEach(subNodeInfo => {
+                        processNode(subNodeInfo);
+                    });
+                }
+            });
 
-            document.getElementById('node-input').click(); // Show input details by default
+            // Click the first displayable node by default
+            let firstNodeElementId = null;
+            if (structure.nodes.length > 0) {
+                const firstStage = structure.nodes[0];
+                if (firstStage.type === 'input' || firstStage.type === 'sequential') {
+                    firstNodeElementId = `node-${firstStage.id}`;
+                } else if (firstStage.type === 'parallel-group' && firstStage.subNodes && firstStage.subNodes.length > 0) {
+                    firstNodeElementId = `node-${firstStage.subNodes[0].id}`;
+                }
+            }
+            if (firstNodeElementId) {
+                const firstNodeToClick = document.getElementById(firstNodeElementId);
+                if (firstNodeToClick) {
+                    firstNodeToClick.click();
+                }
+            }
         }
+        hideUIMessages(); // Initial hide
     </script>
 </body>
 </html>

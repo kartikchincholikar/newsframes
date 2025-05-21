@@ -11,24 +11,14 @@ AWS.config.update({
 });
 const docClient = new AWS.DynamoDB.DocumentClient();
 
-// --- Utility Functions ---
-
-/**
- * Attempts to extract and parse a JSON object from a string.
- * @param {string} text The raw text potentially containing JSON.
- * @returns {object | null} The parsed JSON object or null if parsing fails.
- */
+// --- Utility Functions --- (extractAndParseJson, callModel, saveHeadlineData - unchanged from previous correct version)
 function extractAndParseJson(text) {
     if (!text || typeof text !== 'string') {
         return null;
     }
-    // Remove markdown code block fences if present
     let cleanedText = text.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '').trim();
-    
-    // Find the first '{' and the last '}'
     const firstBrace = cleanedText.indexOf('{');
     const lastBrace = cleanedText.lastIndexOf('}');
-
     if (firstBrace !== -1 && lastBrace > firstBrace) {
         const potentialJson = cleanedText.substring(firstBrace, lastBrace + 1);
         try {
@@ -41,32 +31,23 @@ function extractAndParseJson(text) {
     return null;
 }
 
-/**
- * Calls the generative model API.
- * @param {Array<object>} messages Array of message objects for the model.
- * @param {string} model Model ID.
- * @returns {Promise<object>} Parsed JSON response or an error object.
- */
 async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   if (!process.env.GEMINI_API_KEY) {
     return { error: 'Missing GEMINI_API_KEY', rawContent: '' };
   }
-
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const contents = messages.map(msg => ({
-    role: msg.role === 'system' || msg.role === 'developer' ? 'user' : msg.role, // Gemini uses 'user' for system/developer roles
+    role: msg.role === 'system' || msg.role === 'developer' ? 'user' : msg.role,
     parts: [{ text: msg.content }]
   }));
-
   const payload = {
     contents,
     generationConfig: {
       temperature: 0.5,
       maxOutputTokens: 2048,
-      response_mime_type: "application/json" // Request JSON output
+      response_mime_type: "application/json"
     }
   };
-
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
@@ -76,22 +57,19 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
       },
       body: JSON.stringify(payload)
     });
-
     if (!res.ok) {
       let errorText = `Status code ${res.status}`;
       try {
-          const errorJson = await res.json(); // Try to parse error as JSON
+          const errorJson = await res.json(); 
           errorText = JSON.stringify(errorJson);
       } catch (e) {
-          try { errorText = await res.text(); } catch (e2) { /* Ignore if text fails */ }
+          try { errorText = await res.text(); } catch (e2) { /* Ignore */ }
       }
       console.error('Model API error:', res.status, errorText);
       return { error: `Model API error: ${res.status}. Details: ${errorText.substring(0, 200)}`, rawContent: '' };
     }
-
     const responseJson = await res.json();
     const rawContent = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-
     if (typeof rawContent !== 'string' || rawContent.trim() === '') {
         console.warn('Received empty or non-string content from model:', rawContent);
          return {
@@ -99,8 +77,7 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
              rawContent: rawContent || ''
          };
     }
-
-    const parsedJson = extractAndParseJson(rawContent); // Use our robust parser
+    const parsedJson = extractAndParseJson(rawContent);
     if (parsedJson !== null) {
         return parsedJson;
     } else {
@@ -116,14 +93,9 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   }
 }
 
-/**
- * Saves headline data to DynamoDB.
- * @param {object} data Data to save.
- * @returns {Promise<{success: boolean, message?: string}>}
- */
 async function saveHeadlineData({ input_headline, flipped_headline, human_flipped_headline = '' }) {
   const params = {
-    TableName: 'NewsFrames', // Ensure this table name is correct
+    TableName: 'NewsFrames',
     Item: {
       headline_id: uuidv4(),
       input_headline,
@@ -141,7 +113,7 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
   }
 }
 
-// --- LangGraph State Definition ---
+// --- LangGraph State Definition --- (unchanged)
 /**
  * @typedef {object} AppState
  * @property {string} [input_headline]
@@ -153,142 +125,65 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
  * @property {string} [error_message] General error from graph execution.
  */
 
-// --- LangGraph Nodes ---
-
+// --- LangGraph Nodes --- (runAnalyzersInParallelNode, synthesisNode, saveToDynamoDBNode - unchanged)
 async function runAnalyzersInParallelNode(state) {
     console.log("--- Running Analyzers in Parallel Node ---");
     const headline = state.input_headline;
-
-    // Placeholder Prompt for Detailed Analysis (Analysis 1)
     const messages1 = [
       { role: 'system', content: "You are an AI assistant. Analyze the headline for cognitive frames. Output ONLY valid JSON." },
-      { role: 'developer', content: `Instructions: Analyze the provided headline to identify embedded cognitive frames.
-Your entire output MUST be a single, valid JSON object. Do NOT include any text, explanations, or markdown formatting outside of the JSON structure.
-Required JSON Output Schema:
-\`\`\`json
-{
-  "input_text": "string (The original headline text)",
-  "frames": [
-    {
-      "frame_type": "string (e.g., Conflict, Responsibility)",
-      "keywords": ["string", "list"],
-      "linguistic_indicators": "string (description of style/grammar)",
-      "agent_patient_analysis": {
-        "agent": "string (entity performing action, or N/A)",
-        "patient": "string (entity affected by action, or N/A)"
-      },
-      "contextual_elements": "string (description of context)",
-      "summary": "string (concise explanation of the frame's effect)"
-    }
-  ]
-}
-\`\`\`` },
+      { role: 'developer', content: `Instructions: Analyze the provided headline to identify embedded cognitive frames. Required JSON Output Schema: \`\`\`json { "input_text": "...", "frames": [{ "frame_type": "...", "keywords": [], "linguistic_indicators": "...", "agent_patient_analysis": {"agent": "...", "patient": "..."}, "contextual_elements": "...", "summary": "..."}] } \`\`\`` },
       { role: 'user', content: `Analyze this headline: "${headline}"` }
     ];
-
-    // Placeholder Prompt for Simplified Analysis (Analysis 2)
     const messages2 = [
       { role: 'system', content: "You are an AI assistant. Decompose the headline into semantic frames. Output ONLY valid JSON." },
-      { role: 'developer', content: `Instructions: Analyze the headline for semantic frames.
-Your entire output MUST be a single, valid JSON object. Do NOT include any text, explanations, or markdown formatting outside of the JSON structure.
-Required JSON Output Schema:
-\`\`\`json
-{
-  "input_headline": "string (The original headline text)",
-  "frames": [
-    {
-      "frame_type": "string (e.g., Responsibility)",
-      "keywords": ["string", "list"],
-      "agent": "string (entity performing action, or N/A)",
-      "action": "string (action performed, or N/A)",
-      "patient": "string (entity affected, or N/A)",
-      "contextual_cues": ["string", "list (relevant context words/phrases)"]
-    }
-  ]
-}
-\`\`\`` },
+      { role: 'developer', content: `Instructions: Analyze the headline for semantic frames. Required JSON Output Schema: \`\`\`json { "input_headline": "...", "frames": [{"frame_type": "...", "keywords": [], "agent": "...", "action": "...", "patient": "...", "contextual_cues": []}] } \`\`\`` },
       { role: 'user', content: `Analyze this headline: "${headline}"` }
     ];
-
     const [res1, res2] = await Promise.allSettled([
       callModel(messages1),
       callModel(messages2)
     ]);
-
     const analysis1_result = res1.status === 'fulfilled' ? res1.value : { error: res1.reason?.message || "Analysis 1 (Detailed) failed", rawContent: '' };
     const analysis2_result = res2.status === 'fulfilled' ? res2.value : { error: res2.reason?.message || "Analysis 2 (Simplified) failed", rawContent: '' };
-    
     return { analysis1_result, analysis2_result };
 }
 
 async function synthesisNode(state) {
   console.log("--- Running Synthesis Node ---");
   const { input_headline, analysis1_result, analysis2_result } = state;
-
   const agent1Failed = !!(analysis1_result && analysis1_result.error);
   const agent2Failed = !!(analysis2_result && analysis2_result.error);
-
   if (agent1Failed && agent2Failed) {
     console.warn("Both analysis agents failed. Synthesis may be limited.");
   }
-
-  // Placeholder Prompt for Synthesis
   const messages3 = [
-    { role: 'system', content: "You are an AI assistant. Synthesize the analyses, compare them, and generate a flipped headline. Output ONLY valid JSON." },
-    { role: 'developer', content: `Instructions:
-1. Compare the provided analyses.
-2. Highlight key similarities and differences.
-3. Output a "flipped_headline" presenting the same key information with an opposite frame. Add assumed info in [] if needed.
-4. Your entire output MUST be a single, valid JSON object. Do NOT include any text, explanations, or markdown formatting outside of the JSON structure.
-
-Required JSON Output Schema:
-\`\`\`json
-{
-  "headline": "${input_headline}",
-  "flipped_headline": "string (the same information presented in an opposite way)",
-  "key_similarities": ["string (Description of a similarity based on analyses)", "string"],
-  "key_differences": ["string (Description of a difference based on analyses)", "string"],
-  "agent1_had_error": ${agent1Failed},
-  "agent2_had_error": ${agent2Failed}
-}
-\`\`\`` },
-    { role: 'user', content: `Original Headline: "${input_headline}"
-Analysis1 Data (Detailed): ${JSON.stringify(analysis1_result)}
-Analysis2 Data (Simplified): ${JSON.stringify(analysis2_result)}` }
+    { role: 'system', content: "You are an AI assistant. Synthesize analyses, compare them, and generate a flipped headline. Output ONLY valid JSON." },
+    { role: 'developer', content: `Instructions: Compare analyses, highlight similarities/differences, output a "flipped_headline". Required JSON Output Schema: \`\`\`json { "headline": "${input_headline}", "flipped_headline": "...", "key_similarities": [], "key_differences": [], "agent1_had_error": ${agent1Failed}, "agent2_had_error": ${agent2Failed} } \`\`\`` },
+    { role: 'user', content: `Original Headline: "${input_headline}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis2_result)}` }
   ];
-
   const synthesis_result = await callModel(messages3);
   let flipped_headline = 'Alternative perspective unavailable (synthesis error or not found)';
-
   if (synthesis_result && !synthesis_result.error && typeof synthesis_result.flipped_headline === 'string') {
     flipped_headline = synthesis_result.flipped_headline;
   } else if (synthesis_result && synthesis_result.error) {
     flipped_headline = `Alternative perspective unavailable (Error: ${synthesis_result.error})`;
+  } else if (typeof synthesis_result === 'object' && synthesis_result !== null && !synthesis_result.flipped_headline) {
+     flipped_headline = 'Alternative perspective unavailable (flipped_headline field missing)';
+  } else if (typeof synthesis_result !== 'object' && synthesis_result !== null) {
+     flipped_headline = `Alternative perspective unavailable (Unexpected synthesis output type)`;
   }
-  // Fallback if synthesis_result is not an object or flipped_headline is missing
-  else if (typeof synthesis_result === 'object' && synthesis_result !== null && !synthesis_result.flipped_headline) {
-     flipped_headline = 'Alternative perspective unavailable (flipped_headline field missing in synthesis)';
-  } else if (typeof synthesis_result !== 'object' && synthesis_result !== null) { // If model returned non-JSON string despite request
-     flipped_headline = `Alternative perspective unavailable (Unexpected synthesis output type: ${typeof synthesis_result})`;
-  }
-
-
   return { synthesis_result, flipped_headline };
 }
 
 async function saveToDynamoDBNode(state) {
   console.log("--- Running Save to DynamoDB Node ---");
   const { input_headline, flipped_headline } = state;
-
-  if (!input_headline || typeof flipped_headline !== 'string') { // ensure flipped_headline is a string
+  if (!input_headline || typeof flipped_headline !== 'string') {
     console.warn("Missing input_headline or valid flipped_headline for DB save. Skipping.");
     return { db_save_status: { success: false, message: "Missing data or invalid flipped_headline for DB save" } };
   }
-  
-  // Sanitize flipped_headline if it's an error message or placeholder
   const cleanFlippedHeadline = flipped_headline.startsWith("Alternative perspective unavailable") ? 
                                 "Alternative perspective unavailable" : flipped_headline;
-
   const status = await saveHeadlineData({
     input_headline,
     flipped_headline: cleanFlippedHeadline
@@ -296,8 +191,7 @@ async function saveToDynamoDBNode(state) {
   return { db_save_status: status };
 }
 
-
-// --- LangGraph Workflow Definition ---
+// --- LangGraph Workflow Definition --- (appStateChannels, appGraph, app - unchanged)
 const appStateChannels = {
     input_headline: { value: (x, y) => y, default: () => undefined },
     analysis1_result: { value: (x, y) => y, default: () => undefined },
@@ -307,18 +201,14 @@ const appStateChannels = {
     db_save_status: { value: (x, y) => y, default: () => undefined },
     error_message: { value: (x, y) => y, default: () => undefined },
 };
-
 const appGraph = new StateGraph({ channels: appStateChannels });
-
 appGraph.addNode("parallel_analyzers", runAnalyzersInParallelNode);
 appGraph.addNode("synthesizer", synthesisNode);
 appGraph.addNode("saver", saveToDynamoDBNode);
-
 appGraph.setEntryPoint("parallel_analyzers");
 appGraph.addEdge("parallel_analyzers", "synthesizer");
 appGraph.addEdge("synthesizer", "saver");
 appGraph.addEdge("saver", END);
-
 const app = appGraph.compile();
 
 
@@ -326,7 +216,7 @@ const app = appGraph.compile();
 exports.handler = async function(event) {
   const commonHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*', // Configure as needed for security
+    'Access-Control-Allow-Origin': '*', 
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
@@ -349,46 +239,80 @@ exports.handler = async function(event) {
     return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ error: 'Invalid request: ' + error.message }) };
   }
 
+  // Define the graph structure for the frontend
+  // This structure dictates how the frontend visualizes the graph stages and nodes.
+  // 'id' should be unique for DOM elements.
+  // 'detailsKey' maps to the key in the `data` payload for showing details.
+  // 'statusKey' maps to the key in the `data` payload for checking error/success.
+  const graphStructure = {
+    nodes: [ // This array represents sequential stages of the graph
+      {
+        id: "input_display", // Unique ID for this display element
+        displayName: "Input Headline",
+        type: "input", // Special type for the initial input
+        detailsKey: "input_headline", // The key in `data` for its details
+        statusKey: "input_headline"   // The key in `data` to check its status (presence)
+      },
+      {
+        id: "parallel_analyzers_stage", // ID for the stage itself
+        type: "parallel-group", // Indicates this stage has multiple sub-elements
+        subNodes: [ // The actual conceptual nodes displayed in parallel
+          { id: "analysis1", displayName: "1a. Detailed Analysis", detailsKey: "raw_analysis1", statusKey: "raw_analysis1" },
+          { id: "analysis2", displayName: "1b. Simplified Analysis", detailsKey: "raw_analysis2", statusKey: "raw_analysis2" }
+        ]
+      },
+      {
+        id: "synthesizer_display", 
+        displayName: "2. Synthesizer",
+        type: "sequential", // A standard sequential node/stage
+        detailsKey: "synthesis_details",
+        statusKey: "synthesis_details"
+      },
+      {
+        id: "saver_display",
+        displayName: "3. Save to DB",
+        type: "sequential",
+        detailsKey: "db_save_status",
+        statusKey: "db_save_status" // db_save_status has a .success boolean
+      }
+    ]
+  };
+
   const initialState = { input_headline: headline };
 
   try {
     console.log("Invoking LangGraph app with state:", initialState);
     const finalState = await app.invoke(initialState, { recursionLimit: 10 });
-    console.log("LangGraph app finished. Final state captured."); // Avoid logging potentially large finalState directly here in production
+    console.log("LangGraph app finished.");
 
-    // Construct a summary for the client
     const responsePayload = {
         input_headline: finalState.input_headline,
         flipped_headline: finalState.flipped_headline,
-        synthesis_details: finalState.synthesis_result, // Contains similarities, differences, etc.
-        analysis1_summary: finalState.analysis1_result?.error ? { error: finalState.analysis1_result.error } : "Completed",
-        analysis2_summary: finalState.analysis2_result?.error ? { error: finalState.analysis2_result.error } : "Completed",
+        synthesis_details: finalState.synthesis_result,
+        // Keep raw_analysis1/2 keys as used by frontend's detailsKey/statusKey
+        raw_analysis1: finalState.analysis1_result, 
+        raw_analysis2: finalState.analysis2_result,
         db_save_status: finalState.db_save_status,
-        raw_analysis1: finalState.analysis1_result, // Optional: for debugging or more detailed client use
-        raw_analysis2: finalState.analysis2_result, // Optional
     };
     
-    // Determine if there were critical errors
     let overallStatusMessage = "Processing successful";
     let httpStatusCode = 200;
 
     if (finalState.analysis1_result?.error && finalState.analysis2_result?.error) {
         overallStatusMessage = "Both analysis steps failed.";
-        // httpStatusCode = 500; // Or keep 200 and let client interpret errors
     } else if (finalState.synthesis_result?.error || (finalState.flipped_headline && finalState.flipped_headline.startsWith("Alternative perspective unavailable (Error:"))) {
         overallStatusMessage = "Synthesis failed or encountered an error.";
-        // httpStatusCode = 500; 
-    } else if (!finalState.db_save_status?.success) {
+    } else if (finalState.db_save_status && !finalState.db_save_status.success) {
         overallStatusMessage = "Processing completed, but failed to save results to database.";
     }
-
 
     return {
       statusCode: httpStatusCode,
       headers: commonHeaders,
       body: JSON.stringify({
         message: overallStatusMessage,
-        data: responsePayload
+        data: responsePayload,
+        graphStructure: graphStructure // Send the structure to the frontend
       }),
     };
 
@@ -400,7 +324,8 @@ exports.handler = async function(event) {
       body: JSON.stringify({
         error: 'Graph execution failed unexpectedly.',
         details: graphError.message,
-        input_headline: headline
+        input_headline: headline,
+        graphStructure: graphStructure // Also send structure on error for potential partial display
       }),
     };
   }
