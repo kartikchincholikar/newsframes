@@ -11,7 +11,7 @@ AWS.config.update({
 });
 const docClient = new AWS.DynamoDB.DocumentClient();
 
-// --- Utility Functions --- (extractAndParseJson, callModel, saveHeadlineData - unchanged from previous correct version)
+// --- Utility Functions ---
 function extractAndParseJson(text) {
     if (!text || typeof text !== 'string') {
         return null;
@@ -43,7 +43,7 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   const payload = {
     contents,
     generationConfig: {
-      temperature: 0.5,
+      temperature: 0.3, // Slightly lower for more deterministic pronoun replacement
       maxOutputTokens: 2048,
       response_mime_type: "application/json"
     }
@@ -113,77 +113,208 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
   }
 }
 
-// --- LangGraph State Definition --- (unchanged)
+// --- LangGraph State Definition ---
 /**
  * @typedef {object} AppState
  * @property {string} [input_headline]
+ * @property {string} [headline_with_placeholders] The headline after pronoun_replacer1
+ * @property {object} [pronoun_map] Mapping of placeholders to original pronouns
+ * @property {object | {error: string, rawContent?: string}} [pronoun_replacement1_result] Result of pronoun_replacer1
  * @property {object | {error: string, rawContent?: string}} [analysis1_result]
  * @property {object | {error: string, rawContent?: string}} [analysis2_result]
  * @property {object | {error: string, rawContent?: string}} [synthesis_result]
- * @property {string} [flipped_headline]
+ * @property {string} [flipped_headline_with_placeholders] Flipped headline from synthesizer (may contain placeholders)
+ * @property {string} [flipped_headline] Final flipped headline after pronoun_replacer2
+ * @property {object} [pronoun_replacement2_details] Details of pronoun_replacer2 (e.g., which replacements occurred)
  * @property {{success: boolean, message?: string}} [db_save_status]
- * @property {string} [error_message] General error from graph execution.
+ * @property {string} [error_message]
  */
 
-// --- LangGraph Nodes --- (runAnalyzersInParallelNode, synthesisNode, saveToDynamoDBNode - unchanged)
+// --- LangGraph Nodes ---
+
+async function pronounReplacer1Node(state) {
+    console.log("--- Running Pronoun Replacer 1 Node ---");
+    const headline = state.input_headline;
+
+    const messages = [
+        { role: 'system', content: "You are an AI assistant. Your task is to replace pronouns in the given text with unique, bracketed, uppercase placeholders (e.g., [PERSON_A], [THING_B], [LOCATION_C]). Identify the original pronoun and the placeholder you created. Output ONLY valid JSON." },
+        { role: 'developer', content: `Instructions:
+1. Analyze the input text: "${headline}".
+2. Identify all pronouns (e.g., he, she, it, they, them, his, her, its, their, I, you, we, us, my, your, our).
+3. For each identified pronoun, create a unique placeholder (e.g., [PERSON_A], [PERSON_B], [OBJECT_A], [GROUP_A]).
+4. Replace the pronouns in the text with these placeholders.
+5. Provide a mapping of each placeholder to its original pronoun.
+6. Your entire output MUST be a single, valid JSON object.
+
+Required JSON Output Schema:
+\`\`\`json
+{
+  "original_text": "The original input text",
+  "text_with_placeholders": "The text with pronouns replaced by placeholders",
+  "pronoun_map": {
+    "[PLACEHOLDER_A]": "original_pronoun_A",
+    "[PLACEHOLDER_B]": "original_pronoun_B"
+  }
+}
+\`\`\`` },
+        { role: 'user', content: `Process this text: "${headline}"` }
+    ];
+
+    const result = await callModel(messages);
+
+    if (result && !result.error && result.text_with_placeholders && result.pronoun_map) {
+        return {
+            pronoun_replacement1_result: result,
+            headline_with_placeholders: result.text_with_placeholders,
+            pronoun_map: result.pronoun_map
+        };
+    } else {
+        console.warn("Pronoun Replacer 1 failed or returned invalid data. Using original headline for downstream tasks.", result?.error);
+        return {
+            pronoun_replacement1_result: result || { error: "Pronoun Replacer 1: Invalid output", rawContent: JSON.stringify(result) },
+            headline_with_placeholders: headline, // Fallback to original
+            pronoun_map: {} // Empty map
+        };
+    }
+}
+
 async function runAnalyzersInParallelNode(state) {
     console.log("--- Running Analyzers in Parallel Node ---");
-    const headline = state.input_headline;
+    // Use the headline with placeholders if available, otherwise original input
+    const headlineToAnalyze = state.headline_with_placeholders || state.input_headline;
+
     const messages1 = [
-      { role: 'system', content: "You are an AI assistant. Analyze the headline for cognitive frames. Output ONLY valid JSON." },
+      { role: 'system', content: "You are an AI assistant. Analyze the headline (which may contain placeholders like [PERSON_A]) for cognitive frames. Output ONLY valid JSON." },
       { role: 'developer', content: `Instructions: Analyze the provided headline to identify embedded cognitive frames. Required JSON Output Schema: \`\`\`json { "input_text": "...", "frames": [{ "frame_type": "...", "keywords": [], "linguistic_indicators": "...", "agent_patient_analysis": {"agent": "...", "patient": "..."}, "contextual_elements": "...", "summary": "..."}] } \`\`\`` },
-      { role: 'user', content: `Analyze this headline: "${headline}"` }
+      { role: 'user', content: `Analyze this headline: "${headlineToAnalyze}"` }
     ];
     const messages2 = [
-      { role: 'system', content: "You are an AI assistant. Decompose the headline into semantic frames. Output ONLY valid JSON." },
+      { role: 'system', content: "You are an AI assistant. Decompose the headline (which may contain placeholders like [PERSON_A]) into semantic frames. Output ONLY valid JSON." },
       { role: 'developer', content: `Instructions: Analyze the headline for semantic frames. Required JSON Output Schema: \`\`\`json { "input_headline": "...", "frames": [{"frame_type": "...", "keywords": [], "agent": "...", "action": "...", "patient": "...", "contextual_cues": []}] } \`\`\`` },
-      { role: 'user', content: `Analyze this headline: "${headline}"` }
+      { role: 'user', content: `Analyze this headline: "${headlineToAnalyze}"` }
     ];
+
     const [res1, res2] = await Promise.allSettled([
       callModel(messages1),
       callModel(messages2)
     ]);
+
     const analysis1_result = res1.status === 'fulfilled' ? res1.value : { error: res1.reason?.message || "Analysis 1 (Detailed) failed", rawContent: '' };
     const analysis2_result = res2.status === 'fulfilled' ? res2.value : { error: res2.reason?.message || "Analysis 2 (Simplified) failed", rawContent: '' };
+    
     return { analysis1_result, analysis2_result };
 }
 
 async function synthesisNode(state) {
   console.log("--- Running Synthesis Node ---");
-  const { input_headline, analysis1_result, analysis2_result } = state;
+  const headlineToSynthesize = state.headline_with_placeholders || state.input_headline;
+  const { analysis1_result, analysis2_result } = state;
   const agent1Failed = !!(analysis1_result && analysis1_result.error);
   const agent2Failed = !!(analysis2_result && analysis2_result.error);
+
   if (agent1Failed && agent2Failed) {
     console.warn("Both analysis agents failed. Synthesis may be limited.");
   }
+
   const messages3 = [
-    { role: 'system', content: "You are an AI assistant. Synthesize analyses, compare them, and generate a flipped headline. Output ONLY valid JSON." },
-    { role: 'developer', content: `Instructions: Compare analyses, highlight similarities/differences, output a "flipped_headline". Required JSON Output Schema: \`\`\`json { "headline": "${input_headline}", "flipped_headline": "...", "key_similarities": [], "key_differences": [], "agent1_had_error": ${agent1Failed}, "agent2_had_error": ${agent2Failed} } \`\`\`` },
-    { role: 'user', content: `Original Headline: "${input_headline}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis2_result)}` }
+    { role: 'system', content: "You are an AI assistant. Synthesize analyses, compare them, and generate a flipped headline (which may contain placeholders like [PERSON_A]). Output ONLY valid JSON." },
+    { role: 'developer', content: `Instructions: Compare analyses, highlight similarities/differences, output a "flipped_headline". Required JSON Output Schema: \`\`\`json { "headline": "${headlineToSynthesize}", "flipped_headline": "...", "key_similarities": [], "key_differences": [], "agent1_had_error": ${agent1Failed}, "agent2_had_error": ${agent2Failed} } \`\`\`` },
+    { role: 'user', content: `Original Headline (potentially with placeholders): "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis2_result)}` }
   ];
+
   const synthesis_result = await callModel(messages3);
-  let flipped_headline = 'Alternative perspective unavailable (synthesis error or not found)';
+  let flipped_headline_with_placeholders = 'Alternative perspective unavailable (synthesis error or not found)';
+
   if (synthesis_result && !synthesis_result.error && typeof synthesis_result.flipped_headline === 'string') {
-    flipped_headline = synthesis_result.flipped_headline;
+    flipped_headline_with_placeholders = synthesis_result.flipped_headline;
   } else if (synthesis_result && synthesis_result.error) {
-    flipped_headline = `Alternative perspective unavailable (Error: ${synthesis_result.error})`;
+    flipped_headline_with_placeholders = `Alternative perspective unavailable (Error: ${synthesis_result.error})`;
   } else if (typeof synthesis_result === 'object' && synthesis_result !== null && !synthesis_result.flipped_headline) {
-     flipped_headline = 'Alternative perspective unavailable (flipped_headline field missing)';
+     flipped_headline_with_placeholders = 'Alternative perspective unavailable (flipped_headline field missing)';
   } else if (typeof synthesis_result !== 'object' && synthesis_result !== null) {
-     flipped_headline = `Alternative perspective unavailable (Unexpected synthesis output type)`;
+     flipped_headline_with_placeholders = `Alternative perspective unavailable (Unexpected synthesis output type)`;
   }
-  return { synthesis_result, flipped_headline };
+  
+  // Store the potentially placeholder-filled headline from synthesis
+  // The final flipped_headline will be set by pronounReplacer2Node
+  return { synthesis_result, flipped_headline_with_placeholders };
 }
+
+async function pronounReplacer2Node(state) {
+    console.log("--- Running Pronoun Replacer 2 Node ---");
+    let textToProcess = state.flipped_headline_with_placeholders;
+    const pronounMap = state.pronoun_map || {};
+    const replacementsMade = {};
+
+    if (!textToProcess || typeof textToProcess !== 'string') {
+        console.warn("Pronoun Replacer 2: No valid text to process from synthesis.");
+        return { 
+            flipped_headline: state.flipped_headline_with_placeholders || "Error: Missing text for pronoun reversion", // Fallback
+            pronoun_replacement2_details: {
+                status: "Skipped - no input text",
+                original_text: textToProcess,
+                final_text: textToProcess,
+                replacements_made: {}
+            }
+        };
+    }
+    if (Object.keys(pronounMap).length === 0) {
+        console.log("Pronoun Replacer 2: No pronoun map provided, returning text as is.");
+        return { 
+            flipped_headline: textToProcess,
+            pronoun_replacement2_details: {
+                status: "Skipped - no pronoun map",
+                original_text: textToProcess,
+                final_text: textToProcess,
+                replacements_made: {}
+            }
+        };
+    }
+
+    let processedText = textToProcess;
+    // Iterate over the map and replace placeholders
+    for (const placeholder in pronounMap) {
+        if (pronounMap.hasOwnProperty(placeholder)) {
+            const originalPronoun = pronounMap[placeholder];
+            // Use a regex to replace all occurrences of the placeholder
+            // Escape special characters in placeholder for regex
+            const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedPlaceholder, 'g');
+            
+            if (processedText.includes(placeholder)) {
+                processedText = processedText.replace(regex, originalPronoun);
+                replacementsMade[placeholder] = originalPronoun;
+            }
+        }
+    }
+    
+    console.log("Pronoun Replacer 2: Replacements made:", replacementsMade);
+    return {
+        flipped_headline: processedText, // This is the final, reverted headline
+        pronoun_replacement2_details: {
+            status: "Completed",
+            original_text_with_placeholders: textToProcess,
+            final_text: processedText,
+            replacements_made: replacementsMade,
+            pronoun_map_used: pronounMap
+        }
+    };
+}
+
 
 async function saveToDynamoDBNode(state) {
   console.log("--- Running Save to DynamoDB Node ---");
-  const { input_headline, flipped_headline } = state;
+  // Use the final flipped_headline which should have pronouns reverted
+  const { input_headline, flipped_headline } = state; 
+
   if (!input_headline || typeof flipped_headline !== 'string') {
     console.warn("Missing input_headline or valid flipped_headline for DB save. Skipping.");
     return { db_save_status: { success: false, message: "Missing data or invalid flipped_headline for DB save" } };
   }
+  
   const cleanFlippedHeadline = flipped_headline.startsWith("Alternative perspective unavailable") ? 
                                 "Alternative perspective unavailable" : flipped_headline;
+
   const status = await saveHeadlineData({
     input_headline,
     flipped_headline: cleanFlippedHeadline
@@ -191,24 +322,38 @@ async function saveToDynamoDBNode(state) {
   return { db_save_status: status };
 }
 
-// --- LangGraph Workflow Definition --- (appStateChannels, appGraph, app - unchanged)
+// --- LangGraph Workflow Definition ---
 const appStateChannels = {
     input_headline: { value: (x, y) => y, default: () => undefined },
+    headline_with_placeholders: { value: (x, y) => y, default: () => undefined },
+    pronoun_map: { value: (x, y) => y, default: () => ({}) },
+    pronoun_replacement1_result: { value: (x, y) => y, default: () => undefined },
     analysis1_result: { value: (x, y) => y, default: () => undefined },
     analysis2_result: { value: (x, y) => y, default: () => undefined },
     synthesis_result: { value: (x, y) => y, default: () => undefined },
+    flipped_headline_with_placeholders: { value: (x, y) => y, default: () => undefined },
     flipped_headline: { value: (x, y) => y, default: () => undefined },
+    pronoun_replacement2_details: { value: (x, y) => y, default: () => undefined },
     db_save_status: { value: (x, y) => y, default: () => undefined },
     error_message: { value: (x, y) => y, default: () => undefined },
 };
+
 const appGraph = new StateGraph({ channels: appStateChannels });
+
+appGraph.addNode("pronoun_replacer1", pronounReplacer1Node);
 appGraph.addNode("parallel_analyzers", runAnalyzersInParallelNode);
 appGraph.addNode("synthesizer", synthesisNode);
+appGraph.addNode("pronoun_replacer2", pronounReplacer2Node);
 appGraph.addNode("saver", saveToDynamoDBNode);
-appGraph.setEntryPoint("parallel_analyzers");
+
+// Define edges
+appGraph.setEntryPoint("pronoun_replacer1");
+appGraph.addEdge("pronoun_replacer1", "parallel_analyzers");
 appGraph.addEdge("parallel_analyzers", "synthesizer");
-appGraph.addEdge("synthesizer", "saver");
+appGraph.addEdge("synthesizer", "pronoun_replacer2");
+appGraph.addEdge("pronoun_replacer2", "saver");
 appGraph.addEdge("saver", END);
+
 const app = appGraph.compile();
 
 
@@ -239,24 +384,26 @@ exports.handler = async function(event) {
     return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ error: 'Invalid request: ' + error.message }) };
   }
 
-  // Define the graph structure for the frontend
-  // This structure dictates how the frontend visualizes the graph stages and nodes.
-  // 'id' should be unique for DOM elements.
-  // 'detailsKey' maps to the key in the `data` payload for showing details.
-  // 'statusKey' maps to the key in the `data` payload for checking error/success.
   const graphStructure = {
-    nodes: [ // This array represents sequential stages of the graph
+    nodes: [
       {
-        id: "input_display", // Unique ID for this display element
+        id: "input_display",
         displayName: "Input Headline",
-        type: "input", // Special type for the initial input
-        detailsKey: "input_headline", // The key in `data` for its details
-        statusKey: "input_headline"   // The key in `data` to check its status (presence)
+        type: "input",
+        detailsKey: "input_headline",
+        statusKey: "input_headline"
       },
       {
-        id: "parallel_analyzers_stage", // ID for the stage itself
-        type: "parallel-group", // Indicates this stage has multiple sub-elements
-        subNodes: [ // The actual conceptual nodes displayed in parallel
+        id: "pronoun_replacer1_display",
+        displayName: "0. Pronoun Replacer (Initial)",
+        type: "sequential",
+        detailsKey: "pronoun_replacement1_result", // Stores the full LLM output for this node
+        statusKey: "pronoun_replacement1_result"  // Check error on this object
+      },
+      {
+        id: "parallel_analyzers_stage",
+        type: "parallel-group",
+        subNodes: [
           { id: "analysis1", displayName: "1a. Detailed Analysis", detailsKey: "raw_analysis1", statusKey: "raw_analysis1" },
           { id: "analysis2", displayName: "1b. Simplified Analysis", detailsKey: "raw_analysis2", statusKey: "raw_analysis2" }
         ]
@@ -264,16 +411,23 @@ exports.handler = async function(event) {
       {
         id: "synthesizer_display", 
         displayName: "2. Synthesizer",
-        type: "sequential", // A standard sequential node/stage
+        type: "sequential",
         detailsKey: "synthesis_details",
         statusKey: "synthesis_details"
       },
       {
+        id: "pronoun_replacer2_display",
+        displayName: "3. Pronoun Reverter (Final)",
+        type: "sequential",
+        detailsKey: "pronoun_replacement2_details", // Stores details of the replacement
+        statusKey: "pronoun_replacement2_details"  // Check for presence of this object (or a specific status field within it if added)
+      },
+      {
         id: "saver_display",
-        displayName: "3. Save to DB",
+        displayName: "4. Save to DB",
         type: "sequential",
         detailsKey: "db_save_status",
-        statusKey: "db_save_status" // db_save_status has a .success boolean
+        statusKey: "db_save_status"
       }
     ]
   };
@@ -282,29 +436,37 @@ exports.handler = async function(event) {
 
   try {
     console.log("Invoking LangGraph app with state:", initialState);
-    const finalState = await app.invoke(initialState, { recursionLimit: 10 });
+    const finalState = await app.invoke(initialState, { recursionLimit: 10 }); // Increased recursion limit for more nodes
     console.log("LangGraph app finished.");
 
+    // Ensure all keys needed by graphStructure are present in responsePayload
     const responsePayload = {
         input_headline: finalState.input_headline,
-        flipped_headline: finalState.flipped_headline,
-        synthesis_details: finalState.synthesis_result,
-        // Keep raw_analysis1/2 keys as used by frontend's detailsKey/statusKey
+        pronoun_replacement1_result: finalState.pronoun_replacement1_result, // For Pronoun Replacer 1 details
         raw_analysis1: finalState.analysis1_result, 
         raw_analysis2: finalState.analysis2_result,
+        synthesis_details: finalState.synthesis_result,
+        pronoun_replacement2_details: finalState.pronoun_replacement2_details, // For Pronoun Reverter details
+        flipped_headline: finalState.flipped_headline, // Final flipped headline
         db_save_status: finalState.db_save_status,
     };
     
     let overallStatusMessage = "Processing successful";
     let httpStatusCode = 200;
 
-    if (finalState.analysis1_result?.error && finalState.analysis2_result?.error) {
+    // Check for errors in critical steps
+    if (finalState.pronoun_replacement1_result?.error) {
+        overallStatusMessage = "Initial pronoun replacement failed.";
+    } else if (finalState.analysis1_result?.error && finalState.analysis2_result?.error) {
         overallStatusMessage = "Both analysis steps failed.";
-    } else if (finalState.synthesis_result?.error || (finalState.flipped_headline && finalState.flipped_headline.startsWith("Alternative perspective unavailable (Error:"))) {
+    } else if (finalState.synthesis_result?.error || (finalState.flipped_headline_with_placeholders && finalState.flipped_headline_with_placeholders.startsWith("Alternative perspective unavailable (Error:"))) {
         overallStatusMessage = "Synthesis failed or encountered an error.";
+    } else if (finalState.pronoun_replacement2_details?.status && finalState.pronoun_replacement2_details.status.includes("Skipped")) {
+         overallStatusMessage = "Final pronoun reversion was skipped or had issues.";
     } else if (finalState.db_save_status && !finalState.db_save_status.success) {
         overallStatusMessage = "Processing completed, but failed to save results to database.";
     }
+
 
     return {
       statusCode: httpStatusCode,
@@ -312,7 +474,7 @@ exports.handler = async function(event) {
       body: JSON.stringify({
         message: overallStatusMessage,
         data: responsePayload,
-        graphStructure: graphStructure // Send the structure to the frontend
+        graphStructure: graphStructure
       }),
     };
 
@@ -325,7 +487,7 @@ exports.handler = async function(event) {
         error: 'Graph execution failed unexpectedly.',
         details: graphError.message,
         input_headline: headline,
-        graphStructure: graphStructure // Also send structure on error for potential partial display
+        graphStructure: graphStructure
       }),
     };
   }
