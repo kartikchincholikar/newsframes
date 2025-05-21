@@ -43,7 +43,7 @@ async function callModel(messages, model = 'gemini-1.5-flash-latest') {
   const payload = {
     contents,
     generationConfig: {
-      temperature: 0.3, // Slightly lower for more deterministic pronoun replacement
+      temperature: 0.3, // Slightly lower for more deterministic properNoun replacement
       maxOutputTokens: 2048,
       response_mime_type: "application/json"
     }
@@ -117,43 +117,43 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
 /**
  * @typedef {object} AppState
  * @property {string} [input_headline]
- * @property {string} [headline_with_placeholders] The headline after pronoun_replacer1
- * @property {object} [pronoun_map] Mapping of placeholders to original pronouns
- * @property {object | {error: string, rawContent?: string}} [pronoun_replacement1_result] Result of pronoun_replacer1
+ * @property {string} [headline_with_placeholders] The headline after properNoun_replacer1
+ * @property {object} [properNoun_map] Mapping of placeholders to original properNouns
+ * @property {object | {error: string, rawContent?: string}} [properNoun_replacement1_result] Result of properNoun_replacer1
  * @property {object | {error: string, rawContent?: string}} [analysis1_result]
  * @property {object | {error: string, rawContent?: string}} [analysis2_result]
  * @property {object | {error: string, rawContent?: string}} [synthesis_result]
  * @property {string} [flipped_headline_with_placeholders] Flipped headline from synthesizer (may contain placeholders)
- * @property {string} [flipped_headline] Final flipped headline after pronoun_replacer2
- * @property {object} [pronoun_replacement2_details] Details of pronoun_replacer2 (e.g., which replacements occurred)
+ * @property {string} [flipped_headline] Final flipped headline after properNoun_replacer2
+ * @property {object} [properNoun_replacement2_details] Details of properNoun_replacer2 (e.g., which replacements occurred)
  * @property {{success: boolean, message?: string}} [db_save_status]
  * @property {string} [error_message]
  */
 
 // --- LangGraph Nodes ---
 
-async function pronounReplacer1Node(state) {
-    console.log("--- Running Pronoun Replacer 1 Node ---");
+async function properNounReplacer1Node(state) {
+    console.log("--- Running properNoun Replacer 1 Node ---");
     const headline = state.input_headline;
 
     const messages = [
-        { role: 'system', content: "You are an AI assistant. Your task is to replace pronouns in the given text with unique, bracketed, uppercase placeholders (e.g., [PERSON_A], [THING_B], [LOCATION_C]). Identify the original pronoun and the placeholder you created. Output ONLY valid JSON." },
+        { role: 'system', content: "You are an AI assistant. Your task is to replace proper nouns in the given text with unique, bracketed, uppercase placeholders (e.g., [PERSON_A], [THING_B], [LOCATION_C]). Identify the original proper nouns and the placeholders you created. Output ONLY valid JSON." },
         { role: 'developer', content: `Instructions:
 1. Analyze the input text: "${headline}".
-2. Identify all pronouns (e.g., he, she, it, they, them, his, her, its, their, I, you, we, us, my, your, our).
-3. For each identified pronoun, create a unique placeholder (e.g., [PERSON_A], [PERSON_B], [OBJECT_A], [GROUP_A]).
-4. Replace the pronouns in the text with these placeholders.
-5. Provide a mapping of each placeholder to its original pronoun.
+2. Identify all proper nouns.
+3. For each identified proper noun, create a unique placeholder (e.g., [PERSON_A], [PERSON_B], [OBJECT_A], [GROUP_A]).
+4. Replace the proper nouns in the text with these placeholders.
+5. Provide a mapping of each placeholder to its original proper noun.
 6. Your entire output MUST be a single, valid JSON object.
 
 Required JSON Output Schema:
 \`\`\`json
 {
   "original_text": "The original input text",
-  "text_with_placeholders": "The text with pronouns replaced by placeholders",
-  "pronoun_map": {
-    "[PLACEHOLDER_A]": "original_pronoun_A",
-    "[PLACEHOLDER_B]": "original_pronoun_B"
+  "text_with_placeholders": "The text with properNouns replaced by placeholders",
+  "properNoun_map": {
+    "[PLACEHOLDER_A]": "original_properNoun_A",
+    "[PLACEHOLDER_B]": "original_properNoun_B"
   }
 }
 \`\`\`` },
@@ -162,18 +162,18 @@ Required JSON Output Schema:
 
     const result = await callModel(messages);
 
-    if (result && !result.error && result.text_with_placeholders && result.pronoun_map) {
+    if (result && !result.error && result.text_with_placeholders && result.properNoun_map) {
         return {
-            pronoun_replacement1_result: result,
+            properNoun_replacement1_result: result,
             headline_with_placeholders: result.text_with_placeholders,
-            pronoun_map: result.pronoun_map
+            properNoun_map: result.properNoun_map
         };
     } else {
-        console.warn("Pronoun Replacer 1 failed or returned invalid data. Using original headline for downstream tasks.", result?.error);
+        console.warn("properNoun Replacer 1 failed or returned invalid data. Using original headline for downstream tasks.", result?.error);
         return {
-            pronoun_replacement1_result: result || { error: "Pronoun Replacer 1: Invalid output", rawContent: JSON.stringify(result) },
+            properNoun_replacement1_result: result || { error: "properNoun Replacer 1: Invalid output", rawContent: JSON.stringify(result) },
             headline_with_placeholders: headline, // Fallback to original
-            pronoun_map: {} // Empty map
+            properNoun_map: {} // Empty map
         };
     }
 }
@@ -236,21 +236,21 @@ async function synthesisNode(state) {
   }
   
   // Store the potentially placeholder-filled headline from synthesis
-  // The final flipped_headline will be set by pronounReplacer2Node
+  // The final flipped_headline will be set by properNounReplacer2Node
   return { synthesis_result, flipped_headline_with_placeholders };
 }
 
-async function pronounReplacer2Node(state) {
-    console.log("--- Running Pronoun Replacer 2 Node ---");
+async function properNounReplacer2Node(state) {
+    console.log("--- Running properNoun Replacer 2 Node ---");
     let textToProcess = state.flipped_headline_with_placeholders;
-    const pronounMap = state.pronoun_map || {};
+    const properNounMap = state.properNoun_map || {};
     const replacementsMade = {};
 
     if (!textToProcess || typeof textToProcess !== 'string') {
-        console.warn("Pronoun Replacer 2: No valid text to process from synthesis.");
+        console.warn("properNoun Replacer 2: No valid text to process from synthesis.");
         return { 
-            flipped_headline: state.flipped_headline_with_placeholders || "Error: Missing text for pronoun reversion", // Fallback
-            pronoun_replacement2_details: {
+            flipped_headline: state.flipped_headline_with_placeholders || "Error: Missing text for properNoun reversion", // Fallback
+            properNoun_replacement2_details: {
                 status: "Skipped - no input text",
                 original_text: textToProcess,
                 final_text: textToProcess,
@@ -258,12 +258,12 @@ async function pronounReplacer2Node(state) {
             }
         };
     }
-    if (Object.keys(pronounMap).length === 0) {
-        console.log("Pronoun Replacer 2: No pronoun map provided, returning text as is.");
+    if (Object.keys(properNounMap).length === 0) {
+        console.log("properNoun Replacer 2: No properNoun map provided, returning text as is.");
         return { 
             flipped_headline: textToProcess,
-            pronoun_replacement2_details: {
-                status: "Skipped - no pronoun map",
+            properNoun_replacement2_details: {
+                status: "Skipped - no properNoun map",
                 original_text: textToProcess,
                 final_text: textToProcess,
                 replacements_made: {}
@@ -273,30 +273,30 @@ async function pronounReplacer2Node(state) {
 
     let processedText = textToProcess;
     // Iterate over the map and replace placeholders
-    for (const placeholder in pronounMap) {
-        if (pronounMap.hasOwnProperty(placeholder)) {
-            const originalPronoun = pronounMap[placeholder];
+    for (const placeholder in properNounMap) {
+        if (properNounMap.hasOwnProperty(placeholder)) {
+            const originalproperNoun = properNounMap[placeholder];
             // Use a regex to replace all occurrences of the placeholder
             // Escape special characters in placeholder for regex
             const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(escapedPlaceholder, 'g');
             
             if (processedText.includes(placeholder)) {
-                processedText = processedText.replace(regex, originalPronoun);
-                replacementsMade[placeholder] = originalPronoun;
+                processedText = processedText.replace(regex, originalproperNoun);
+                replacementsMade[placeholder] = originalproperNoun;
             }
         }
     }
     
-    console.log("Pronoun Replacer 2: Replacements made:", replacementsMade);
+    console.log("properNoun Replacer 2: Replacements made:", replacementsMade);
     return {
         flipped_headline: processedText, // This is the final, reverted headline
-        pronoun_replacement2_details: {
+        properNoun_replacement2_details: {
             status: "Completed",
             original_text_with_placeholders: textToProcess,
             final_text: processedText,
             replacements_made: replacementsMade,
-            pronoun_map_used: pronounMap
+            properNoun_map_used: properNounMap
         }
     };
 }
@@ -304,7 +304,7 @@ async function pronounReplacer2Node(state) {
 
 async function saveToDynamoDBNode(state) {
   console.log("--- Running Save to DynamoDB Node ---");
-  // Use the final flipped_headline which should have pronouns reverted
+  // Use the final flipped_headline which should have properNouns reverted
   const { input_headline, flipped_headline } = state; 
 
   if (!input_headline || typeof flipped_headline !== 'string') {
@@ -326,32 +326,32 @@ async function saveToDynamoDBNode(state) {
 const appStateChannels = {
     input_headline: { value: (x, y) => y, default: () => undefined },
     headline_with_placeholders: { value: (x, y) => y, default: () => undefined },
-    pronoun_map: { value: (x, y) => y, default: () => ({}) },
-    pronoun_replacement1_result: { value: (x, y) => y, default: () => undefined },
+    properNoun_map: { value: (x, y) => y, default: () => ({}) },
+    properNoun_replacement1_result: { value: (x, y) => y, default: () => undefined },
     analysis1_result: { value: (x, y) => y, default: () => undefined },
     analysis2_result: { value: (x, y) => y, default: () => undefined },
     synthesis_result: { value: (x, y) => y, default: () => undefined },
     flipped_headline_with_placeholders: { value: (x, y) => y, default: () => undefined },
     flipped_headline: { value: (x, y) => y, default: () => undefined },
-    pronoun_replacement2_details: { value: (x, y) => y, default: () => undefined },
+    properNoun_replacement2_details: { value: (x, y) => y, default: () => undefined },
     db_save_status: { value: (x, y) => y, default: () => undefined },
     error_message: { value: (x, y) => y, default: () => undefined },
 };
 
 const appGraph = new StateGraph({ channels: appStateChannels });
 
-appGraph.addNode("pronoun_replacer1", pronounReplacer1Node);
+appGraph.addNode("properNoun_replacer1", properNounReplacer1Node);
 appGraph.addNode("parallel_analyzers", runAnalyzersInParallelNode);
 appGraph.addNode("synthesizer", synthesisNode);
-appGraph.addNode("pronoun_replacer2", pronounReplacer2Node);
+appGraph.addNode("properNoun_replacer2", properNounReplacer2Node);
 appGraph.addNode("saver", saveToDynamoDBNode);
 
 // Define edges
-appGraph.setEntryPoint("pronoun_replacer1");
-appGraph.addEdge("pronoun_replacer1", "parallel_analyzers");
+appGraph.setEntryPoint("properNoun_replacer1");
+appGraph.addEdge("properNoun_replacer1", "parallel_analyzers");
 appGraph.addEdge("parallel_analyzers", "synthesizer");
-appGraph.addEdge("synthesizer", "pronoun_replacer2");
-appGraph.addEdge("pronoun_replacer2", "saver");
+appGraph.addEdge("synthesizer", "properNoun_replacer2");
+appGraph.addEdge("properNoun_replacer2", "saver");
 appGraph.addEdge("saver", END);
 
 const app = appGraph.compile();
@@ -394,11 +394,11 @@ exports.handler = async function(event) {
         statusKey: "input_headline"
       },
       {
-        id: "pronoun_replacer1_display",
-        displayName: "0. Pronoun Replacer (Initial)",
+        id: "properNoun_replacer1_display",
+        displayName: "0. properNoun Replacer (Initial)",
         type: "sequential",
-        detailsKey: "pronoun_replacement1_result", // Stores the full LLM output for this node
-        statusKey: "pronoun_replacement1_result"  // Check error on this object
+        detailsKey: "properNoun_replacement1_result", // Stores the full LLM output for this node
+        statusKey: "properNoun_replacement1_result"  // Check error on this object
       },
       {
         id: "parallel_analyzers_stage",
@@ -416,11 +416,11 @@ exports.handler = async function(event) {
         statusKey: "synthesis_details"
       },
       {
-        id: "pronoun_replacer2_display",
-        displayName: "3. Pronoun Reverter (Final)",
+        id: "properNoun_replacer2_display",
+        displayName: "3. properNoun Reverter (Final)",
         type: "sequential",
-        detailsKey: "pronoun_replacement2_details", // Stores details of the replacement
-        statusKey: "pronoun_replacement2_details"  // Check for presence of this object (or a specific status field within it if added)
+        detailsKey: "properNoun_replacement2_details", // Stores details of the replacement
+        statusKey: "properNoun_replacement2_details"  // Check for presence of this object (or a specific status field within it if added)
       },
       {
         id: "saver_display",
@@ -442,11 +442,11 @@ exports.handler = async function(event) {
     // Ensure all keys needed by graphStructure are present in responsePayload
     const responsePayload = {
         input_headline: finalState.input_headline,
-        pronoun_replacement1_result: finalState.pronoun_replacement1_result, // For Pronoun Replacer 1 details
+        properNoun_replacement1_result: finalState.properNoun_replacement1_result, // For properNoun Replacer 1 details
         raw_analysis1: finalState.analysis1_result, 
         raw_analysis2: finalState.analysis2_result,
         synthesis_details: finalState.synthesis_result,
-        pronoun_replacement2_details: finalState.pronoun_replacement2_details, // For Pronoun Reverter details
+        properNoun_replacement2_details: finalState.properNoun_replacement2_details, // For properNoun Reverter details
         flipped_headline: finalState.flipped_headline, // Final flipped headline
         db_save_status: finalState.db_save_status,
     };
@@ -455,14 +455,14 @@ exports.handler = async function(event) {
     let httpStatusCode = 200;
 
     // Check for errors in critical steps
-    if (finalState.pronoun_replacement1_result?.error) {
-        overallStatusMessage = "Initial pronoun replacement failed.";
+    if (finalState.properNoun_replacement1_result?.error) {
+        overallStatusMessage = "Initial properNoun replacement failed.";
     } else if (finalState.analysis1_result?.error && finalState.analysis2_result?.error) {
         overallStatusMessage = "Both analysis steps failed.";
     } else if (finalState.synthesis_result?.error || (finalState.flipped_headline_with_placeholders && finalState.flipped_headline_with_placeholders.startsWith("Alternative perspective unavailable (Error:"))) {
         overallStatusMessage = "Synthesis failed or encountered an error.";
-    } else if (finalState.pronoun_replacement2_details?.status && finalState.pronoun_replacement2_details.status.includes("Skipped")) {
-         overallStatusMessage = "Final pronoun reversion was skipped or had issues.";
+    } else if (finalState.properNoun_replacement2_details?.status && finalState.properNoun_replacement2_details.status.includes("Skipped")) {
+         overallStatusMessage = "Final properNoun reversion was skipped or had issues.";
     } else if (finalState.db_save_status && !finalState.db_save_status.success) {
         overallStatusMessage = "Processing completed, but failed to save results to database.";
     }
