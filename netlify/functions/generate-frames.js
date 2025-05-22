@@ -193,7 +193,7 @@ async function runAnalyzersInParallelNode(state) {
       const messages1 = [
     { role: 'system', content: `You are an expert in Journalism and Media Studies specializing in cognitive frame analysis. Your job is to study news headlines (which may contain placeholders like [PERSON_A]) to identify embedded cognitive frames.` },
     { role: 'developer', content: `Instructions:
-1. Carefully parse the input headline: "${headline}".
+1. Carefully parse the input headline: "${headlineToAnalyze}".
 2. Identify relevant cognitive frames (e.g., Conflict, Human Interest, Responsibility, Economic Consequences, Morality, Progress/Recovery).
 3. For each frame, extract keywords, linguistic indicators (e.g., voice, metaphors), agent/patient roles, and contextual elements supporting the frame.
 4. Your entire output MUST be a single, valid JSON object. Do NOT include any text, explanations, apologies, or markdown formatting outside of the JSON structure.
@@ -217,7 +217,7 @@ Required JSON Output Schema:
   ]
 }
 \`\`\`` },
-    { role: 'user', content: `Analyze this headline: "${headline}"` }
+    { role: 'user', content: `Analyze this headline: "${headlineToAnalyze}"` }
   ];
 
     const messages2 = [
@@ -610,7 +610,7 @@ exports.handler = async function(event) {
     if (finalState.properNoun_replacement1_result?.error) {
         overallStatusMessage = "Initial properNoun replacement failed.";
     } else if (finalState.analysis1_result?.error && finalState.analysis2_result?.error && finalState.analysis3_result?.error) {
-        overallStatusMessage = "Both analysis steps failed.";
+        overallStatusMessage = "All analysis steps failed.";
     } else if (finalState.synthesis_result?.error || (finalState.flipped_headline_with_placeholders && finalState.flipped_headline_with_placeholders.startsWith("Alternative perspective unavailable (Error:"))) {
         overallStatusMessage = "Synthesis failed or encountered an error.";
     } else if (finalState.properNoun_replacement2_details?.status && finalState.properNoun_replacement2_details.status.includes("Skipped")) {
