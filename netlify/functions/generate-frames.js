@@ -122,6 +122,7 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
  * @property {object | {error: string, rawContent?: string}} [properNoun_replacement1_result] Result of properNoun_replacer1
  * @property {object | {error: string, rawContent?: string}} [analysis1_result]
  * @property {object | {error: string, rawContent?: string}} [analysis2_result]
+ * @property {object | {error: string, rawContent?: string}} [analysis3_result]
  * @property {object | {error: string, rawContent?: string}} [synthesis_result]
  * @property {string} [flipped_headline_with_placeholders] Flipped headline from synthesizer (may contain placeholders)
  * @property {string} [flipped_headline] Final flipped headline after properNoun_replacer2
