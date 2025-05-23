@@ -245,7 +245,7 @@ Required JSON Output Schema:
     {
       "headline": "Dog attacks 4-year-old causing injuries",
       "reframed": "Dog attacks 4-year-old causing injuries (because the kid had been attacking the mama dog's pup)",
-      "explanation": "The dog mama was defending her pup by attacking the 4-year-old"
+      "explanation": "The dog mama was defending her pup by attacking the 4-year-old" 
     }
     `
       },
