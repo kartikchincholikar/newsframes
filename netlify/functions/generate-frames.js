@@ -365,7 +365,7 @@ async function synthesisNode(state) {
   const messages3 = [
     { role: 'system', content: "You are an expert in Journalism and Media Studies specializing in news framing and subliminal messaging. Study the following analyses of the news headlines, and generate a flipped headline such the it conveys the SAME FACTS, but with opposite framing to the frames analysed. Output ONLY valid JSON." },
     { role: 'developer', content: `Instructions: Compare analyses and output a "flipped_headline". Required JSON Output Schema: \`\`\`json { "headline": "${headlineToSynthesize}", "flipped_headline": "...", "agent1_had_error": ${agent1Failed},  "agent2_had_error": ${agent2Failed}, "agent3_had_error": ${agent3Failed} } \`\`\`` },
-    { role: 'user', content: `Original Headline (potentially with placeholders): "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis3_result)}` }
+    { role: 'user', content: `Original Headline (potentially with placeholders): "${headlineToSynthesize}"\nAnalysis2: ${JSON.stringify(analysis3_result)}` }
   ];
 
   const synthesis_result = await callModel(messages3);
