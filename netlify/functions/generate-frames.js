@@ -223,18 +223,18 @@ Required JSON Output Schema:
     const messages2 = [
       {
         role: 'system',
-        content: "You are an expert in Journalism and Media Studies and also a conspiracy theorist who reinterprets news headlines through a creative unlikely lens—taking inspiration from Russell's Teapot. Your job is to reframe news headlines in a very creative and unlikely way, but also to write clearly, and plausibly. Respond ONLY in valid JSON format."
+        content: "You are an expert in Journalism and Media Studies. You specialize in rewriting news headlines with additional plausible information. You take inspiration from Russell's Teapot explainations and speculative claims which are plausible, but unlikely. Your job is to reframe news headlines in a very creative and unlikely way, but also to write clearly, and plausibly. Respond ONLY in valid JSON format."
       },
       {
         role: 'developer',
         content: `Instructions:
-    Take the input headline and generate a wild, conspiratorial reinterpretation in JSON format using this schema:
+    Take the input headline and add extra information to it which could be plausible, but unlikely. Use JSON format using this schema:
 
     \`\`\`json
     {
       "headline": "...",
-      "reframed": "...",                // original headline with a surreal parenthetical
-      "explanation": "..."              // the hidden/paranoid explanation behind the parenthetical
+      "reframed": "...",                // original headline with a parenthetical around the extra information
+      "explanation": "..."              // the explanation behind the extra information
     }
     \`\`\`
 
@@ -244,8 +244,8 @@ Required JSON Output Schema:
     Output:
     {
       "headline": "Dog attacks 4-year-old causing injuries",
-      "reframed": "Dog attacks 4-year-old causing injuries (because the dog is an alien in disguise sent to study fear in humans)",
-      "explanation": "The dog is part of an interstellar research unit conducting field experiments on early emotional development in humans."
+      "reframed": "Dog attacks 4-year-old causing injuries (because the kid had been attacking the mama dog's pup)",
+      "explanation": "The dog mama was defending her pup by attacking the 4-year-old"
     }
     `
       },
@@ -345,7 +345,7 @@ Required JSON Output Schema:
     ]);
 
     const analysis1_result = res1.status === 'fulfilled' ? res1.value : { error: res1.reason?.message || "Analysis 1 (semantic) failed", rawContent: '' };
-    const analysis2_result = res2.status === 'fulfilled' ? res2.value : { error: res2.reason?.message || "Analysis 2 (Schizo) failed", rawContent: '' };
+    const analysis2_result = res2.status === 'fulfilled' ? res2.value : { error: res2.reason?.message || "Analysis 2 (teapot) failed", rawContent: '' };
     const analysis3_result = res3.status === 'fulfilled' ? res3.value : { error: res3.reason?.message || "Analysis 3 (euphemism) failed", rawContent: '' };
     return { analysis1_result, analysis2_result, analysis3_result };
 }
@@ -363,9 +363,9 @@ async function synthesisNode(state) {
   }
 
   const messages3 = [
-    { role: 'system', content: "You are an expert in Journalism and Media Studies specializing in news framing and subliminal messaging. Synthesize the following analyses of the news headline, compare them, and generate a flipped headline such the it conveys the same facts, but with the opposite tone and framing. Output ONLY valid JSON." },
+    { role: 'system', content: "You are an expert in Journalism and Media Studies specializing in news framing and subliminal messaging. Study the following analyses of the news headlines, and generate a flipped headline such the it conveys the SAME FACTS, but with opposite framing to the frames analysed. Output ONLY valid JSON." },
     { role: 'developer', content: `Instructions: Compare analyses and output a "flipped_headline". Required JSON Output Schema: \`\`\`json { "headline": "${headlineToSynthesize}", "flipped_headline": "...", "agent1_had_error": ${agent1Failed},  "agent2_had_error": ${agent2Failed}, "agent3_had_error": ${agent3Failed} } \`\`\`` },
-    { role: 'user', content: `Original Headline (potentially with placeholders): "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis2_result)}\nAnalysis3: ${JSON.stringify(analysis3_result)}` }
+    { role: 'user', content: `Original Headline (potentially with placeholders): "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis3_result)}` }
   ];
 
   const synthesis_result = await callModel(messages3);
