@@ -363,9 +363,9 @@ async function synthesisNode(state) {
   }
 
   const messages3 = [
-    { role: 'system', content: "You are an expert in Journalism and Media Studies specializing in news framing and subliminal messaging. Study the following analyses of the news headlines, and generate a flipped headline such the it conveys the SAME FACTS, but with opposite framing to the frames analysed. Output ONLY valid JSON." },
-    { role: 'developer', content: `Instructions: Study Analysis1 and Analysis2. Then choose one analysis which has strong evidence of news framing. Next, output a "flipped_headline" which reverses the effects of the chosen news framing. However, "flipped_headline" should contain the SAME FACTS, with a flipped framing. Required JSON Output Schema: \`\`\`json { "headline": "${headlineToSynthesize}", "flipped_headline": "...", "agent1_had_error": ${agent1Failed},  "agent2_had_error": ${agent2Failed}, "agent3_had_error": ${agent3Failed} } \`\`\`` },
-    { role: 'user', content: `Original Headline (potentially with placeholders): "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis3_result)}` }
+    { role: 'system', content: `You are an expert in Journalism and Media Studies specializing in news framing. For each headline you generate a "flipped_headline" which conveys the SAME FACTS from the headline, but with opposite (flipped) news framing. Output ONLY valid JSON.` },
+    { role: 'developer', content: `Instructions: Study Analysis1 and Analysis2. Choose one analysis which has strong evidence of news framing and generate a "flipped_headline" which reverses the news framing of the Original Headline. It is important that "flipped_headline" should contain the SAME FACTS present in the original headline. Required JSON Output Schema: \`\`\`json { "headline": "${headlineToSynthesize}", "flipped_headline": "...", "agent1_had_error": ${agent1Failed},  "agent2_had_error": ${agent2Failed}, "agent3_had_error": ${agent3Failed} } \`\`\`` },
+    { role: 'user', content: `Original headline: "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis3_result)}` }
   ];
 
   const synthesis_result = await callModel(messages3);
