@@ -431,25 +431,39 @@ Required JSON Output Schema:
       }
     ];
 
-    const messages5 = [
+        const messages5 = [
       {
         role: 'system',
-        content: `You are an expert in media news framing. Your job is to analyze news headlines to detect if they report spectacular violence (sudden, dramatic harm such as attacks, riots, murders). If so, speculate the underlying systemic violence or structural cause (e.g., poverty, racism, environmental degradation) that could be behind it. Then rewrite the headline by appending this systemic cause in parentheses. Output ONLY valid JSON.`
+        content: `You are an expert in media news framing. Your job is to analyze news headlines.
+1. Detect if they report spectacular violence (sudden, dramatic harm such as attacks, riots, murders).
+2. If spectacular violence IS found: Speculate the underlying systemic violence or structural cause (e.g., poverty, racism, environmental degradation) that could be behind it. Then rewrite the headline by appending this systemic cause in parentheses.
+3. If spectacular violence IS NOT found: Indicate this in your JSON output.
+Output ONLY valid JSON. Do NOT include any text, explanations, or markdown formatting outside of the JSON structure itself.`
       },
       {
         role: 'developer',
         content: `Instructions:
-        1. Detect if the headline reports spectacular violence.
-        2. If yes, identify a plausible underlying systemic cause.
-        3. Rewrite the headline by appending the systemic cause in parentheses.
-        4. If the headline does not contain spectacular violence, exclude it from output.
+        1. Analyze the input headline: "${headlineToAnalyze}".
+        2. Determine if it reports spectacular violence.
+        3. If yes, identify a plausible underlying systemic cause and rewrite the headline accordingly.
+        4. If no, reflect this in the output.
+        5. Your entire output MUST be a single, valid JSON object.
 
-        Output Format (JSON):
+        Output Format (JSON) if spectacular violence IS FOUND:
         \`\`\`json
         {
-          "original_headline": "...",
-          "systemic_cause": "...",
-          "rewritten_headline": "..."
+          "original_headline": "The original headline text",
+          "spectacular_violence_found": true,
+          "systemic_cause": "The identified systemic cause",
+          "rewritten_headline": "The rewritten headline with cause in parentheses"
+        }
+        \`\`\`
+
+        Output Format (JSON) if spectacular violence IS NOT FOUND:
+        \`\`\`json
+        {
+          "original_headline": "The original headline text",
+          "spectacular_violence_found": false
         }
         \`\`\`
 
@@ -506,7 +520,6 @@ Required JSON Output Schema:
         content: `Headline: "${headlineToAnalyze}"`
       }
     ];
-
 
 
 
