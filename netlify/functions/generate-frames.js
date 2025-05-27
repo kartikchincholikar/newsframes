@@ -123,6 +123,8 @@ async function saveHeadlineData({ input_headline, flipped_headline, human_flippe
  * @property {object | {error: string, rawContent?: string}} [analysis1_result]
  * @property {object | {error: string, rawContent?: string}} [analysis2_result]
  * @property {object | {error: string, rawContent?: string}} [analysis3_result]
+ * @property {object | {error: string, rawContent?: string}} [analysis4_result]
+ * @property {object | {error: string, rawContent?: string}} [analysis5_result]
  * @property {object | {error: string, rawContent?: string}} [synthesis_result]
  * @property {string} [flipped_headline_with_placeholders] Flipped headline from synthesizer (may contain placeholders)
  * @property {string} [flipped_headline] Final flipped headline after properNoun_replacer2
@@ -338,34 +340,217 @@ Required JSON Output Schema:
       }
     ];
 
-    const [res1, res2, res3] = await Promise.allSettled([
+    const messages4 = [
+      {
+        role: 'system',
+        content: "You are an expert in media framing analysis. Your job is to analyze news snippets to identify whether they use episodic or thematic framing and to suggest reframing. Output ONLY valid JSON."
+      },
+      {
+        role: 'developer',
+        content: `Instructions:
+        1. Determine whether the input uses thematic or episodic framing.
+        2. Explain why this framing type applies.
+        3. Suggest how the framing could be flipped (e.g., from episodic to thematic or vice versa).
+
+        Output Format (JSON):
+        \`\`\`json
+        {
+          "input": "...",
+          "analysis": [
+            {
+              "thematic_or_episodic_framing": "[Framing Type]",
+              "analysis": "[Why thematic or episodic framing applies]",
+              "flip_framing": "[Alternative framing suggestion]"
+            }
+          ]
+        }
+        \`\`\`
+
+        Examples:
+
+        Input: "In Mogadishu, a 1-year-old boy died from complications of malnutrition after international aid was cut off. His father said he could do nothing but watch."
+        \`\`\`json
+        {
+          "input": "In Mogadishu, a 1-year-old boy died from complications of malnutrition after international aid was cut off. His father said he could do nothing but watch.",
+          "analysis": [
+            {
+              "thematic_or_episodic_framing": "Episodic",
+              "analysis": "The report focuses on a single, emotionally charged case of famine-related death, using a personal narrative to illustrate suffering.",
+              "flip_framing": "Reframe thematically by situating the story within the broader context of international food aid policy and climate-related famine in the Horn of Africa."
+            }
+          ]
+        }
+        \`\`\`
+
+        Input: "Historians estimate that British colonial policies in India during the late 19th century caused over 30 million deaths through enforced grain export and denial of aid."
+        \`\`\`json
+        {
+          "input": "Historians estimate that British colonial policies in India during the late 19th century caused over 30 million deaths through enforced grain export and denial of aid.",
+          "analysis": [
+            {
+              "thematic_or_episodic_framing": "Thematic",
+              "analysis": "This example uses historical data and structural policy analysis to explain systemic consequences of colonialism.",
+              "flip_framing": "Reframe episodically by narrating the story of a single village or family affected by the Victorian famine under British rule."
+            }
+          ]
+        }
+        \`\`\`
+
+        Input: "Tyre Nichols, a 29-year-old Black man, was brutally beaten by Memphis police during a traffic stop. His family described the incident as a modern-day lynching."
+        \`\`\`json
+        {
+          "input": "Tyre Nichols, a 29-year-old Black man, was brutally beaten by Memphis police during a traffic stop. His family described the incident as a modern-day lynching.",
+          "analysis": [
+            {
+              "thematic_or_episodic_framing": "Episodic",
+              "analysis": "This framing focuses on a specific victim and incident, emphasizing the emotional and immediate impact of police brutality.",
+              "flip_framing": "Reframe thematically by analyzing national data on racial disparities in police violence and patterns in excessive force cases."
+            }
+          ]
+        }
+        \`\`\`
+
+        Input: "A recent study found that Black people in the UK are seven times more likely to die following police restraint than white people, indicating systemic racial bias."
+        \`\`\`json
+        {
+          "input": "A recent study found that Black people in the UK are seven times more likely to die following police restraint than white people, indicating systemic racial bias.",
+          "analysis": [
+            {
+              "thematic_or_episodic_framing": "Thematic",
+              "analysis": "The statement uses statistical evidence and focuses on systemic racial inequality in policing rather than individual stories.",
+              "flip_framing": "Reframe episodically by sharing the personal story of someone who died or was injured under restraint to humanize the data."
+            }
+          ]
+        }
+        \`\`\`
+        `
+      },
+      {
+        role: 'user',
+        content: `Headline: "${headlineToAnalyze}"`
+      }
+    ];
+
+    const messages5 = [
+      {
+        role: 'system',
+        content: "You are an expert in media news framing. Your job is to analyze news headlines to detect if they report spectacular violence (sudden, dramatic harm such as attacks, riots, murders). If so, speculate the underlying systemic violence or structural cause (e.g., poverty, racism, environmental degradation) that could be behind it. Then rewrite the headline by appending this systemic cause in parentheses. Output ONLY valid JSON."
+      },
+      {
+        role: 'developer',
+        content: `Instructions:
+    1. Detect if the headline reports spectacular violence.
+    2. If yes, identify a plausible underlying systemic cause.
+    3. Rewrite the headline by appending the systemic cause in parentheses.
+    4. If the headline does not contain spectacular violence, exclude it from output.
+
+    Output format (JSON):
+    \\\json
+    [
+      {
+        "original_headline": "...",
+        "systemic_cause": "...",
+        "rewritten_headline": "..."
+      }
+    ]
+    \\\`
+
+    Examples:
+    Input headline: "Gang wars kill 3 in Chinchwad."
+    Output:
+    [
+      {
+        "original_headline": "Gang wars kill 3 in Chinchwad.",
+        "systemic_cause": "Poverty and racism",
+        "rewritten_headline": "Gang wars kill 3 in Chinchwad (Systemic poverty and racism could be the deeper cause)"
+      }
+    ]
+
+    Input headline: "Leopard attacks cows and villagers"
+    Output:
+    [
+      {
+        "original_headline": "Leopard attacks cows and villagers",
+        "systemic_cause": "Deforestation",
+        "rewritten_headline": "Leopard attacks cows and villagers (Deforestation forced it out of its habitat)"
+      }
+    ]
+    Input headline: "Bomb blast rocks crowded marketplace in Baghdad"
+    Output:
+    [
+      {
+        "original_headline": "Bomb blast rocks crowded marketplace in Baghdad",
+        "systemic_cause": "Post-invasion instability and foreign occupation",
+        "rewritten_headline": "Bomb blast rocks crowded marketplace in Baghdad (Post-invasion instability and foreign occupation may underlie this violence)"
+      }
+    ]
+
+    Input headline: "Teen killed in police chase in South LA"
+    Output:
+    [
+      {
+        "original_headline": "Teen killed in police chase in South LA",
+        "systemic_cause": "Racial profiling and economic marginalization",
+        "rewritten_headline": "Teen killed in police chase in South LA (Racial profiling and economic marginalization may be underlying factors)"
+      }
+    ]
+
+    Input headline: "Protesters clash with police in downtown Cairo"
+    Output:
+    [
+      {
+        "original_headline": "Protesters clash with police in downtown Cairo",
+        "systemic_cause": "Authoritarian repression and political exclusion",
+        "rewritten_headline": "Protesters clash with police in downtown Cairo (Authoritarian repression and political exclusion contribute to unrest)"
+      }
+    ]
+    `
+      },
+      {
+        role: 'user',
+        content: `Headline: "${headlineToAnalyze}"`
+      }
+    ];
+
+
+
+
+    
+    const [res1, res2, res3, res4, res5] = await Promise.allSettled([
       callModel(messages1),
       callModel(messages2),
-      callModel(messages3)
+      callModel(messages3),
+      callModel(messages4),
+      callModel(messages5),
     ]);
 
     const analysis1_result = res1.status === 'fulfilled' ? res1.value : { error: res1.reason?.message || "Analysis 1 (semantic) failed", rawContent: '' };
     const analysis2_result = res2.status === 'fulfilled' ? res2.value : { error: res2.reason?.message || "Analysis 2 (teapot) failed", rawContent: '' };
     const analysis3_result = res3.status === 'fulfilled' ? res3.value : { error: res3.reason?.message || "Analysis 3 (euphemism) failed", rawContent: '' };
-    return { analysis1_result, analysis2_result, analysis3_result };
+    const analysis4_result = res4.status === 'fulfilled' ? res4.value : { error: res4.reason?.message || "Analysis 4 (thematictoepisodic) failed", rawContent: '' };
+    const analysis5_result = res5.status === 'fulfilled' ? res5.value : { error: res5.reason?.message || "Analysis 5 (slowfastviolence) failed", rawContent: '' };
+    
+    return { analysis1_result, analysis2_result, analysis3_result, analysis4_result, analysis5_result };
 }
 
 async function synthesisNode(state) {
   console.log("--- Running Synthesis Node ---");
   const headlineToSynthesize = state.headline_with_placeholders || state.input_headline;
-  const { analysis1_result, analysis2_result, analysis3_result } = state;
+  const { analysis1_result, analysis2_result, analysis3_result, analysis4_result, analysis5_result } = state;
   const agent1Failed = !!(analysis1_result && analysis1_result.error);
   const agent2Failed = !!(analysis2_result && analysis2_result.error);
   const agent3Failed = !!(analysis3_result && analysis3_result.error);
+  const agent4Failed = !!(analysis4_result && analysis4_result.error);
+  const agent5Failed = !!(analysis5_result && analysis5_result.error);
 
-  if (agent1Failed && agent2Failed && agent3Failed) {
-    console.warn("Both analysis agents failed. Synthesis may be limited.");
+  if (agent1Failed && agent2Failed && agent3Failed&& agent4Failed && agent5Failed)) {
+    console.warn("All agents failed. Synthesis may be limited.");
   }
 
   const messages3 = [
     { role: 'system', content: `You are an expert in Journalism and Media Studies specializing in news framing. For each headline you generate a "flipped_headline" which conveys the SAME FACTS from the headline, but with opposite (flipped) news framing. Output ONLY valid JSON.` },
     { role: 'developer', content: `Instructions: Study Analysis1 and Analysis2. Choose one analysis which has strong evidence of news framing and generate a "flipped_headline" which reverses the news framing of the Original Headline. It is important that "flipped_headline" should contain the SAME FACTS present in the original headline. Required JSON Output Schema: \`\`\`json { "headline": "${headlineToSynthesize}", "flipped_headline": "...", "agent1_had_error": ${agent1Failed},  "agent2_had_error": ${agent2Failed}, "agent3_had_error": ${agent3Failed} } \`\`\`` },
-    { role: 'user', content: `Original headline: "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis3_result)}` }
+    { role: 'user', content: `Original headline: "${headlineToSynthesize}"\nAnalysis1: ${JSON.stringify(analysis1_result)}\nAnalysis2: ${JSON.stringify(analysis3_result)}\nAnalysis3: ${JSON.stringify(analysis4_result)}\nAnalysis4: ${JSON.stringify(analysis5_result)}` }
   ];
 
   const synthesis_result = await callModel(messages3);
@@ -478,6 +663,8 @@ const appStateChannels = {
     analysis1_result: { value: (x, y) => y, default: () => undefined },
     analysis2_result: { value: (x, y) => y, default: () => undefined },
     analysis3_result: { value: (x, y) => y, default: () => undefined },
+    analysis4_result: { value: (x, y) => y, default: () => undefined },
+    analysis5_result: { value: (x, y) => y, default: () => undefined },
 
 
     synthesis_result: { value: (x, y) => y, default: () => undefined },
@@ -556,7 +743,9 @@ exports.handler = async function(event) {
         subNodes: [
           { id: "analysis1", displayName: "1a. Sematic Analysis", detailsKey: "raw_analysis1", statusKey: "raw_analysis1" },
           { id: "analysis2", displayName: "1b. Schizo Analysis", detailsKey: "raw_analysis2", statusKey: "raw_analysis2" },
-          { id: "analysis3", displayName: "1c. Euphemistic Analysis", detailsKey: "raw_analysis3", statusKey: "raw_analysis3"}
+          { id: "analysis3", displayName: "1c. Euphemistic Analysis", detailsKey: "raw_analysis3", statusKey: "raw_analysis3"},
+          { id: "analysis4", displayName: "1d. Slow-Fast Violence", detailsKey: "raw_analysis4", statusKey: "raw_analysis4"},
+          { id: "analysis5", displayName: "1e. episodic-thematic", detailsKey: "raw_analysis5", statusKey: "raw_analysis5"}
         ]
       },
       {
@@ -597,6 +786,8 @@ exports.handler = async function(event) {
         raw_analysis1: finalState.analysis1_result, 
         raw_analysis2: finalState.analysis2_result,
         raw_analysis3: finalState.analysis3_result,
+        raw_analysis4: finalState.analysis4_result,
+        raw_analysis5: finalState.analysis5_result,
         synthesis_details: finalState.synthesis_result,
         properNoun_replacement2_details: finalState.properNoun_replacement2_details, // For properNoun Reverter details
         flipped_headline: finalState.flipped_headline, // Final flipped headline
@@ -609,7 +800,7 @@ exports.handler = async function(event) {
     // Check for errors in critical steps
     if (finalState.properNoun_replacement1_result?.error) {
         overallStatusMessage = "Initial properNoun replacement failed.";
-    } else if (finalState.analysis1_result?.error && finalState.analysis2_result?.error && finalState.analysis3_result?.error) {
+    } else if (finalState.analysis1_result?.error && finalState.analysis2_result?.error && finalState.analysis3_result?.error && finalState.analysis4_result?.error && finalState.analysis5_result?.error) {
         overallStatusMessage = "All analysis steps failed.";
     } else if (finalState.synthesis_result?.error || (finalState.flipped_headline_with_placeholders && finalState.flipped_headline_with_placeholders.startsWith("Alternative perspective unavailable (Error:"))) {
         overallStatusMessage = "Synthesis failed or encountered an error.";
