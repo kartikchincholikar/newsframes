@@ -439,71 +439,67 @@ Required JSON Output Schema:
       {
         role: 'developer',
         content: `Instructions:
-    1. Detect if the headline reports spectacular violence.
-    2. If yes, identify a plausible underlying systemic cause.
-    3. Rewrite the headline by appending the systemic cause in parentheses.
-    4. If the headline does not contain spectacular violence, exclude it from output.
+        1. Detect if the headline reports spectacular violence.
+        2. If yes, identify a plausible underlying systemic cause.
+        3. Rewrite the headline by appending the systemic cause in parentheses.
+        4. If the headline does not contain spectacular violence, exclude it from output.
 
-    Output format (JSON):
-    \`\`\`json
-    {
-      "original_headline": "...",
-      "systemic_cause": "...",
-      "rewritten_headline": "..."
-    }
-    \`\`\`
+        Output Format (JSON):
+        \`\`\`json
+        {
+          "original_headline": "...",
+          "systemic_cause": "...",
+          "rewritten_headline": "..."
+        }
+        \`\`\`
 
-    Examples:
-    Input headline: "Gang wars kill 3 in Chinchwad."
-    Output:
-    \`\`\`json
-    {
-      "original_headline": "Gang wars kill 3 in Chinchwad.",
-      "systemic_cause": "Poverty and racism",
-      "rewritten_headline": "Gang wars kill 3 in Chinchwad (Systemic poverty and racism could be the deeper cause)"
-    }
-    \`\`\`
+        Examples:
 
-    Input headline: "Leopard attacks cows and villagers"
-    Output:
-    \`\`\`json
-    {
-      "original_headline": "Leopard attacks cows and villagers",
-      "systemic_cause": "Deforestation",
-      "rewritten_headline": "Leopard attacks cows and villagers (Deforestation forced it out of its habitat)"
-    }
-    \`\`\`
+        Input: "Gang wars kill 3 in Chinchwad."
+        \`\`\`json
+        {
+          "original_headline": "Gang wars kill 3 in Chinchwad.",
+          "systemic_cause": "Poverty and racism",
+          "rewritten_headline": "Gang wars kill 3 in Chinchwad (Systemic poverty and racism could be the deeper cause)"
+        }
+        \`\`\`
 
-    Input headline: "Bomb blast rocks crowded marketplace in Baghdad"
-    Output:
-    \`\`\`json
-    {
-      "original_headline": "Bomb blast rocks crowded marketplace in Baghdad",
-      "systemic_cause": "Post-invasion instability and foreign occupation",
-      "rewritten_headline": "Bomb blast rocks crowded marketplace in Baghdad (Post-invasion instability and foreign occupation may underlie this violence)"
-    }
-    \`\`\`
+        Input: "Leopard attacks cows and villagers"
+        \`\`\`json
+        {
+          "original_headline": "Leopard attacks cows and villagers",
+          "systemic_cause": "Deforestation",
+          "rewritten_headline": "Leopard attacks cows and villagers (Deforestation forced it out of its habitat)"
+        }
+        \`\`\`
 
-    Input headline: "Teen killed in police chase in South LA"
-    Output:
-    \`\`\`json
-    {
-      "original_headline": "Teen killed in police chase in South LA",
-      "systemic_cause": "Racial profiling and economic marginalization",
-      "rewritten_headline": "Teen killed in police chase in South LA (Racial profiling and economic marginalization may be underlying factors)"
-    }
-    \`\`\`
+        Input: "Bomb blast rocks crowded marketplace in Baghdad"
+        \`\`\`json
+        {
+          "original_headline": "Bomb blast rocks crowded marketplace in Baghdad",
+          "systemic_cause": "Post-invasion instability and foreign occupation",
+          "rewritten_headline": "Bomb blast rocks crowded marketplace in Baghdad (Post-invasion instability and foreign occupation may underlie this violence)"
+        }
+        \`\`\`
 
-    Input headline: "Protesters clash with police in downtown Cairo"
-    Output:
-    \`\`\`json
-    {
-      "original_headline": "Protesters clash with police in downtown Cairo",
-      "systemic_cause": "Authoritarian repression and political exclusion",
-      "rewritten_headline": "Protesters clash with police in downtown Cairo (Authoritarian repression and political exclusion contribute to unrest)"
-    }
-    \`\`\`
-    `
+        Input: "Teen killed in police chase in South LA"
+        \`\`\`json
+        {
+          "original_headline": "Teen killed in police chase in South LA",
+          "systemic_cause": "Racial profiling and economic marginalization",
+          "rewritten_headline": "Teen killed in police chase in South LA (Racial profiling and economic marginalization may be underlying factors)"
+        }
+        \`\`\`
+
+        Input: "Protesters clash with police in downtown Cairo"
+        \`\`\`json
+        {
+          "original_headline": "Protesters clash with police in downtown Cairo",
+          "systemic_cause": "Authoritarian repression and political exclusion",
+          "rewritten_headline": "Protesters clash with police in downtown Cairo (Authoritarian repression and political exclusion contribute to unrest)"
+        }
+        \`\`\`
+        `
       },
       {
         role: 'user',
