@@ -434,7 +434,7 @@ Required JSON Output Schema:
     const messages5 = [
       {
         role: 'system',
-        content: "You are an expert in media news framing. Your job is to analyze news headlines to detect if they report spectacular violence (sudden, dramatic harm such as attacks, riots, murders). If so, speculate the underlying systemic violence or structural cause (e.g., poverty, racism, environmental degradation) that could be behind it. Then rewrite the headline by appending this systemic cause in parentheses. Output ONLY valid JSON."
+        content: `You are an expert in media news framing. Your job is to analyze news headlines to detect if they report spectacular violence (sudden, dramatic harm such as attacks, riots, murders). If so, speculate the underlying systemic violence or structural cause (e.g., poverty, racism, environmental degradation) that could be behind it. Then rewrite the headline by appending this systemic cause in parentheses. Output ONLY valid JSON.`
       },
       {
         role: 'developer',
@@ -445,65 +445,64 @@ Required JSON Output Schema:
     4. If the headline does not contain spectacular violence, exclude it from output.
 
     Output format (JSON):
-    \\\json
-    [
-      {
-        "original_headline": "...",
-        "systemic_cause": "...",
-        "rewritten_headline": "..."
-      }
-    ]
-    \\\`
+    \`\`\`json
+    {
+      "original_headline": "...",
+      "systemic_cause": "...",
+      "rewritten_headline": "..."
+    }
+    \`\`\`
 
     Examples:
     Input headline: "Gang wars kill 3 in Chinchwad."
     Output:
-    [
-      {
-        "original_headline": "Gang wars kill 3 in Chinchwad.",
-        "systemic_cause": "Poverty and racism",
-        "rewritten_headline": "Gang wars kill 3 in Chinchwad (Systemic poverty and racism could be the deeper cause)"
-      }
-    ]
+    \`\`\`json
+    {
+      "original_headline": "Gang wars kill 3 in Chinchwad.",
+      "systemic_cause": "Poverty and racism",
+      "rewritten_headline": "Gang wars kill 3 in Chinchwad (Systemic poverty and racism could be the deeper cause)"
+    }
+    \`\`\`
 
     Input headline: "Leopard attacks cows and villagers"
     Output:
-    [
-      {
-        "original_headline": "Leopard attacks cows and villagers",
-        "systemic_cause": "Deforestation",
-        "rewritten_headline": "Leopard attacks cows and villagers (Deforestation forced it out of its habitat)"
-      }
-    ]
+    \`\`\`json
+    {
+      "original_headline": "Leopard attacks cows and villagers",
+      "systemic_cause": "Deforestation",
+      "rewritten_headline": "Leopard attacks cows and villagers (Deforestation forced it out of its habitat)"
+    }
+    \`\`\`
+
     Input headline: "Bomb blast rocks crowded marketplace in Baghdad"
     Output:
-    [
-      {
-        "original_headline": "Bomb blast rocks crowded marketplace in Baghdad",
-        "systemic_cause": "Post-invasion instability and foreign occupation",
-        "rewritten_headline": "Bomb blast rocks crowded marketplace in Baghdad (Post-invasion instability and foreign occupation may underlie this violence)"
-      }
-    ]
+    \`\`\`json
+    {
+      "original_headline": "Bomb blast rocks crowded marketplace in Baghdad",
+      "systemic_cause": "Post-invasion instability and foreign occupation",
+      "rewritten_headline": "Bomb blast rocks crowded marketplace in Baghdad (Post-invasion instability and foreign occupation may underlie this violence)"
+    }
+    \`\`\`
 
     Input headline: "Teen killed in police chase in South LA"
     Output:
-    [
-      {
-        "original_headline": "Teen killed in police chase in South LA",
-        "systemic_cause": "Racial profiling and economic marginalization",
-        "rewritten_headline": "Teen killed in police chase in South LA (Racial profiling and economic marginalization may be underlying factors)"
-      }
-    ]
+    \`\`\`json
+    {
+      "original_headline": "Teen killed in police chase in South LA",
+      "systemic_cause": "Racial profiling and economic marginalization",
+      "rewritten_headline": "Teen killed in police chase in South LA (Racial profiling and economic marginalization may be underlying factors)"
+    }
+    \`\`\`
 
     Input headline: "Protesters clash with police in downtown Cairo"
     Output:
-    [
-      {
-        "original_headline": "Protesters clash with police in downtown Cairo",
-        "systemic_cause": "Authoritarian repression and political exclusion",
-        "rewritten_headline": "Protesters clash with police in downtown Cairo (Authoritarian repression and political exclusion contribute to unrest)"
-      }
-    ]
+    \`\`\`json
+    {
+      "original_headline": "Protesters clash with police in downtown Cairo",
+      "systemic_cause": "Authoritarian repression and political exclusion",
+      "rewritten_headline": "Protesters clash with police in downtown Cairo (Authoritarian repression and political exclusion contribute to unrest)"
+    }
+    \`\`\`
     `
       },
       {
@@ -744,8 +743,8 @@ exports.handler = async function(event) {
           { id: "analysis1", displayName: "1a. Sematic Analysis", detailsKey: "raw_analysis1", statusKey: "raw_analysis1" },
           { id: "analysis2", displayName: "1b. Schizo Analysis", detailsKey: "raw_analysis2", statusKey: "raw_analysis2" },
           { id: "analysis3", displayName: "1c. Euphemistic Analysis", detailsKey: "raw_analysis3", statusKey: "raw_analysis3"},
-          { id: "analysis4", displayName: "1d. Slow-Fast Violence", detailsKey: "raw_analysis4", statusKey: "raw_analysis4"},
-          { id: "analysis5", displayName: "1e. episodic-thematic", detailsKey: "raw_analysis5", statusKey: "raw_analysis5"}
+          { id: "analysis4", displayName: "1d. episodic-thematicSlow-Fast Violence", detailsKey: "raw_analysis4", statusKey: "raw_analysis4"},
+          { id: "analysis5", displayName: "1e. Slow-Fast Violence", detailsKey: "raw_analysis5", statusKey: "raw_analysis5"}
         ]
       },
       {
