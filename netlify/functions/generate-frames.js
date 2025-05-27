@@ -543,7 +543,7 @@ async function synthesisNode(state) {
   const agent4Failed = !!(analysis4_result && analysis4_result.error);
   const agent5Failed = !!(analysis5_result && analysis5_result.error);
 
-  if (agent1Failed && agent2Failed && agent3Failed&& agent4Failed && agent5Failed)) {
+  if (agent1Failed && agent2Failed && agent3Failed&& agent4Failed && agent5Failed) {
     console.warn("All agents failed. Synthesis may be limited.");
   }
 
