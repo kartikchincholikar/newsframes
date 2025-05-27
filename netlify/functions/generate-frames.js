@@ -376,7 +376,7 @@ Required JSON Output Schema:
             {
               "thematic_or_episodic_framing": "Episodic",
               "analysis": "The report focuses on a single, emotionally charged case of famine-related death, using a personal narrative to illustrate suffering.",
-              "flip_framing": "Reframe thematically by situating the story within the broader context of international food aid policy and climate-related famine in the Horn of Africa."
+              "flip_framing": "Recurring droughts, disrupted by global climate change, and reduced foreign aid have led to widespread malnutrition across the Horn of Africa, affecting hundreds of thousands of children in countries like Somalia."
             }
           ]
         }
@@ -390,7 +390,7 @@ Required JSON Output Schema:
             {
               "thematic_or_episodic_framing": "Thematic",
               "analysis": "This example uses historical data and structural policy analysis to explain systemic consequences of colonialism.",
-              "flip_framing": "Reframe episodically by narrating the story of a single village or family affected by the Victorian famine under British rule."
+              "flip_framing": "In a small village in Bengal in 1877, an entire family perished after their grain was requisitioned by colonial authorities. Villagers recalled how children begged for food while warehouses full of grain sat locked for export."
             }
           ]
         }
@@ -404,7 +404,7 @@ Required JSON Output Schema:
             {
               "thematic_or_episodic_framing": "Episodic",
               "analysis": "This framing focuses on a specific victim and incident, emphasizing the emotional and immediate impact of police brutality.",
-              "flip_framing": "Reframe thematically by analyzing national data on racial disparities in police violence and patterns in excessive force cases."
+              "flip_framing": "(A Department of Justice report shows that Black Americans are nearly three times more likely than white Americans to be killed by police.) The case of Tyre Nichols adds to a growing pattern of racially charged violence involving law enforcement."
             }
           ]
         }
@@ -418,7 +418,7 @@ Required JSON Output Schema:
             {
               "thematic_or_episodic_framing": "Thematic",
               "analysis": "The statement uses statistical evidence and focuses on systemic racial inequality in policing rather than individual stories.",
-              "flip_framing": "Reframe episodically by sharing the personal story of someone who died or was injured under restraint to humanize the data."
+              "flip_framing": "In 2020, Kevin Clarke, a 35-year-old Black man, died after being restrained by police in South London. His final words, 'I can’t breathe,' echoed those of other Black victims of police force, drawing national outrage and calls for reform."
             }
           ]
         }
