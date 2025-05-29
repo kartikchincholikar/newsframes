@@ -1,7 +1,15 @@
+# netlify.toml
+
 [build]
   functions = "netlify/functions"
-  publish = "."
+  # If you have no static assets to publish, you can often omit the publish line.
+  # Netlify will focus on deploying the functions.
 
 [dev]
-  functions = "netlify/functions"
-  publish = "."
+  # `netlify dev` will pick up the functions from the build.functions setting.
+  # port = 8888 # Optional: specify a port for the local dev server
+
+# Function-specific settings
+[functions."headline_analyzer"]
+  included_files = ["./graph_config.json"] # Ensures graph_config.json is deployed with the function
+  # node_bundler = "esbuild" # Optional: for potentially faster bundling

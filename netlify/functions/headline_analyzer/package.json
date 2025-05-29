@@ -1,0 +1,11 @@
+{
+  "name": "headline-analyzer-function",
+  "version": "1.0.0",
+  "dependencies": {
+    "@langchain/langgraph": "^0.0.21", 
+    "aws-sdk": "^2.1500.0", 
+    "node-fetch": "^2.7.0",
+    "uuid": "^9.0.1"
+
+  }
+}

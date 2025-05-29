@@ -272,7 +272,7 @@
             
 
             try {
-                const response = await fetch('/.netlify/functions/generate-frames', {
+                const response = await fetch('/.netlify/functions/headline_analyzer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ headline })

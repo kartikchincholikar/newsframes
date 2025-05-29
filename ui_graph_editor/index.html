@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph Editor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>LangGraph Editor</h1>
+
+    <div class="controls">
+        <button id="loadConfig">Load graph_config.json</button>
+        <input type="file" id="fileInput" accept=".json" style="display: none;">
+        <button id="saveConfig">Save graph_config.json</button>
+        <button id="newGraph">New Empty Graph</button>
+    </div>
+
+    <div class="editor-area">
+        <div class="column" id="nodes-column">
+            <h2>Nodes <button id="addNodeBtn">+</button></h2>
+            <ul id="nodesList"></ul>
+        </div>
+
+        <div class="column" id="prompts-column">
+            <h2>Prompts <button id="addPromptBtn">+</button></h2>
+            <select id="promptSelector"></select>
+            <div id="promptEditor">
+                <!-- Prompt editing fields will go here -->
+            </div>
+        </div>
+
+        <div class="column" id="graph-viz-or-edges">
+            <h2>Edges <button id="addEdgeBtn">+</button></h2>
+            <ul id="edgesList"></ul>
+            <p>(Future: Visual graph editor here)</p>
+        </div>
+    </div>
+    
+    <div class="column" id="appstate-column">
+        <h2>AppState Channels <button id="addChannelBtn">+</button></h2>
+        <div id="appStateChannelsEditor"></div>
+    </div>
+
+    <div class="column" id="graphapi-column">
+        <h2>Graph API Structure (for Frontend)</h2>
+        <div id="graphApiStructureEditor">
+            <!-- UI to edit the graphStructure for Netlify response -->
+        </div>
+    </div>
+
+
+    <script src="app.js"></script>
+</body>
+</html>
