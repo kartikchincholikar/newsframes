@@ -1,7 +1,9 @@
 // src/graph_builder.js
 const { StateGraph, END } = require('@langchain/langgraph');
-const fs = require('fs');
-const path = require('path');
+// const fs = require('fs');
+// const path = require('path');
+
+const graphConfig = require('./graph_config.json'); // <--- THE HACK
 const { appStateChannels } = require('./state_definition'); // Corrected path
 const { executeLlmAgentNode, customNodeFunctions } = require('./node_functions'); // Corrected path
 const { callModel } = require('./llm_utils'); // For parallel_llm_group_coordinator
@@ -29,79 +31,84 @@ function interpolateTemplate(template, data) {
 // Function to load graph definition from graph_config.json in the project root
 // src/graph_builder.js
 
-function loadGraphDefinition() {
-    // Path for local development:
-    // Assumes graph_builder.js is in '.../headline_analyzer/src/'
-    // and graph_config.json is in '.../headline_analyzer/graph_config.json'
-    const localDevConfigPath = path.resolve(__dirname, '../graph_config.json');
+// function loadGraphDefinition() {
+//     // Path for local development:
+//     // Assumes graph_builder.js is in '.../headline_analyzer/src/'
+//     // and graph_config.json is in '.../headline_analyzer/graph_config.json'
+//     const localDevConfigPath = path.resolve(__dirname, '../graph_config.json');
 
-    // Path for deployed Lambda environment:
-    // Assumes included_files = ["graph_config.json"] (from function root)
-    // places graph_config.json at /var/task/graph_config.json.
-    // And __dirname (for loadGraphDefinition in bundle) is /var/task/netlify/functions/headline_analyzer/
-    // So, we need to go up three levels from __dirname to reach /var/task/
-    const deployedLambdaPath = path.resolve(__dirname, '../../../graph_config.json');
+//     // Path for deployed Lambda environment:
+//     // Assumes included_files = ["graph_config.json"] (from function root)
+//     // places graph_config.json at /var/task/graph_config.json.
+//     // And __dirname (for loadGraphDefinition in bundle) is /var/task/netlify/functions/headline_analyzer/
+//     // So, we need to go up three levels from __dirname to reach /var/task/
+//     const deployedLambdaPath = path.resolve(__dirname, '../../../graph_config.json');
 
-    let pathToTry;
-    let foundPath = null;
+//     let pathToTry;
+//     let foundPath = null;
 
-    console.log(`[GRAPH_BUILDER] Current __dirname: ${__dirname}`);
+//     console.log(`[GRAPH_BUILDER] Current __dirname: ${__dirname}`);
 
-    // Check local dev path first
-    // Adjusted local dev check: if .env is present one level up (project root for local)
-    // or if NETLIFY_DEV is set, and the local path exists.
-    const isLikelyLocalDev = (process.env.NETLIFY_DEV || process.env.NODE_ENV === 'development');
+//     // Check local dev path first
+//     // Adjusted local dev check: if .env is present one level up (project root for local)
+//     // or if NETLIFY_DEV is set, and the local path exists.
+//     const isLikelyLocalDev = (process.env.NETLIFY_DEV || process.env.NODE_ENV === 'development');
     
-    if (isLikelyLocalDev && __dirname.includes(path.join('headline_analyzer', 'src'))) {
-        console.log(`[GRAPH_BUILDER] Detected local dev structure. Trying local path: ${localDevConfigPath}`);
-        if (fs.existsSync(localDevConfigPath)) {
-            foundPath = localDevConfigPath;
-        }
-    }
+//     if (isLikelyLocalDev && __dirname.includes(path.join('headline_analyzer', 'src'))) {
+//         console.log(`[GRAPH_BUILDER] Detected local dev structure. Trying local path: ${localDevConfigPath}`);
+//         if (fs.existsSync(localDevConfigPath)) {
+//             foundPath = localDevConfigPath;
+//         }
+//     }
 
-    // If not found locally, or not local dev, try the deployed Lambda path
-    if (!foundPath) {
-        console.log(`[GRAPH_BUILDER] Not found locally or not in local dev mode. Trying deployed Lambda path: ${deployedLambdaPath}`);
-        if (fs.existsSync(deployedLambdaPath)) {
-            foundPath = deployedLambdaPath;
-        }
-    }
+//     // If not found locally, or not local dev, try the deployed Lambda path
+//     if (!foundPath) {
+//         console.log(`[GRAPH_BUILDER] Not found locally or not in local dev mode. Trying deployed Lambda path: ${deployedLambdaPath}`);
+//         if (fs.existsSync(deployedLambdaPath)) {
+//             foundPath = deployedLambdaPath;
+//         }
+//     }
 
-    if (!foundPath) {
-        console.error(`FATAL: Graph configuration file not found after trying a_paths.`);
-        console.error(`  Tried local path: ${localDevConfigPath} (exists: ${fs.existsSync(localDevConfigPath)})`);
-        console.error(`  Tried deployed path: ${deployedLambdaPath} (exists: ${fs.existsSync(deployedLambdaPath)})`);
+//     if (!foundPath) {
+//         console.error(`FATAL: Graph configuration file not found after trying a_paths.`);
+//         console.error(`  Tried local path: ${localDevConfigPath} (exists: ${fs.existsSync(localDevConfigPath)})`);
+//         console.error(`  Tried deployed path: ${deployedLambdaPath} (exists: ${fs.existsSync(deployedLambdaPath)})`);
         
-        // Log directory contents for debugging in deployment
-        try {
-            console.log(`[GRAPH_BUILDER] Contents of __dirname (${__dirname}):`, fs.readdirSync(__dirname)); // Should be ['headline_analyzer.js']
-            const dirLevel1Up = path.resolve(__dirname, '..'); // /var/task/netlify/functions/
-            console.log(`[GRAPH_BUILDER] Contents of ${dirLevel1Up}:`, fs.readdirSync(dirLevel1Up)); // Should be ['headline_analyzer']
-            const dirLevel2Up = path.resolve(__dirname, '../..'); // /var/task/netlify/
-            console.log(`[GRAPH_BUILDER] Contents of ${dirLevel2Up}:`, fs.readdirSync(dirLevel2Up)); // Should be ['functions']
-            const dirLevel3Up = path.resolve(__dirname, '../../..'); // /var/task/
-            console.log(`[GRAPH_BUILDER] Contents of ${dirLevel3Up} (expected /var/task/):`, fs.readdirSync(dirLevel3Up)); // Should show graph_config.json here
-        } catch (e) {
-            console.error("[GRAPH_BUILDER] Error reading directory for debug:", e.message);
-        }
-        throw new Error(`Graph configuration file could not be located after checking common paths.`);
-    }
+//         // Log directory contents for debugging in deployment
+//         try {
+//             console.log(`[GRAPH_BUILDER] Contents of __dirname (${__dirname}):`, fs.readdirSync(__dirname)); // Should be ['headline_analyzer.js']
+//             const dirLevel1Up = path.resolve(__dirname, '..'); // /var/task/netlify/functions/
+//             console.log(`[GRAPH_BUILDER] Contents of ${dirLevel1Up}:`, fs.readdirSync(dirLevel1Up)); // Should be ['headline_analyzer']
+//             const dirLevel2Up = path.resolve(__dirname, '../..'); // /var/task/netlify/
+//             console.log(`[GRAPH_BUILDER] Contents of ${dirLevel2Up}:`, fs.readdirSync(dirLevel2Up)); // Should be ['functions']
+//             const dirLevel3Up = path.resolve(__dirname, '../../..'); // /var/task/
+//             console.log(`[GRAPH_BUILDER] Contents of ${dirLevel3Up} (expected /var/task/):`, fs.readdirSync(dirLevel3Up)); // Should show graph_config.json here
+//         } catch (e) {
+//             console.error("[GRAPH_BUILDER] Error reading directory for debug:", e.message);
+//         }
+//         throw new Error(`Graph configuration file could not be located after checking common paths.`);
+//     }
 
-    console.log(`[GRAPH_BUILDER] Successfully found and using graph_config.json at: ${foundPath}`);
-    const rawConfig = fs.readFileSync(foundPath, 'utf-8');
-    try {
-        return JSON.parse(rawConfig);
-    } catch (e) {
-        console.error(`Error parsing graph_config.json from ${foundPath}: ${e.message}`);
-        throw e;
-    }
-}
+//     console.log(`[GRAPH_BUILDER] Successfully found and using graph_config.json at: ${foundPath}`);
+//     const rawConfig = fs.readFileSync(foundPath, 'utf-8');
+//     try {
+//         return JSON.parse(rawConfig);
+//     } catch (e) {
+//         console.error(`Error parsing graph_config.json from ${foundPath}: ${e.message}`);
+//         throw e;
+//     }
+// }
 
 function buildGraph() {
-    const { nodeDefinitions, graphEdges, entryPointNodeId } = loadGraphDefinition();
+    const { nodeDefinitions, graphEdges, entryPointNodeId } = graphConfig;
 
     if (!nodeDefinitions || nodeDefinitions.length === 0) {
+        console.error("FATAL: No nodeDefinitions found in the imported graph_config.json.");
         throw new Error("No nodeDefinitions found in graph_config.json. Cannot build graph.");
+    }
+    if (!graphConfig) { // Should not happen if require works
+         console.error("FATAL: graph_config.json was not imported correctly.");
+         throw new Error("graph_config.json import failed.");
     }
 
     const appGraph = new StateGraph({ channels: appStateChannels });
