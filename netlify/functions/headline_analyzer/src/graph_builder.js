@@ -28,8 +28,6 @@ function interpolateTemplate(template, data) {
 
 // Function to load graph definition from graph_config.json in the project root
 // src/graph_builder.js
-const path = require('path');
-const fs = require('fs');
 
 function loadGraphDefinition() {
     const localDevConfigPath = path.resolve(__dirname, '../graph_config.json'); // For local dev: src/../graph_config.json -> headline_analyzer/graph_config.json
