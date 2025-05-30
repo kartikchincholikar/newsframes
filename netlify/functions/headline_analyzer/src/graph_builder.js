@@ -30,21 +30,17 @@ function interpolateTemplate(template, data) {
 // src/graph_builder.js
 
 function loadGraphDefinition() {
-    const localDevConfigPath = path.resolve(__dirname, '../graph_config.json'); // For local dev: src/../graph_config.json -> headline_analyzer/graph_config.json
+    // Path for local development:
+    // Assumes graph_builder.js is in '.../headline_analyzer/src/'
+    // and graph_config.json is in '.../headline_analyzer/graph_config.json'
+    const localDevConfigPath = path.resolve(__dirname, '../graph_config.json');
 
-    // Paths to try in the deployed Lambda environment:
-    // 1. Directly in the execution root (/var/task/graph_config.json)
-    //    This is where included_files = ["graph_config.json"] (from function root) often places it.
-    const deployedPathRoot = path.resolve(__dirname, 'graph_config.json');
-
-    // 2. If __dirname is something like /var/task/src/ after bundling, and the file was copied to /var/task/src/
-    //    (Less likely with included_files from function root, more likely if it was in src/ and bundled from there without specific include rules)
-    const deployedPathInSrcEquivalent = path.resolve(__dirname, 'graph_config.json'); // Same as above if __dirname is /var/task
-
-    // 3. The path from your error log (just in case __dirname is /var/task/ and it's nested)
-    //    This path seems less likely for included_files = ["graph_config.json"] from function root.
-    const errorLogPath = '/var/task/netlify/functions/headline_analyzer/graph_config.json';
-
+    // Path for deployed Lambda environment:
+    // Assumes included_files = ["graph_config.json"] (from function root)
+    // places graph_config.json at /var/task/graph_config.json.
+    // And __dirname (for loadGraphDefinition in bundle) is /var/task/netlify/functions/headline_analyzer/
+    // So, we need to go up three levels from __dirname to reach /var/task/
+    const deployedLambdaPath = path.resolve(__dirname, '../../../graph_config.json');
 
     let pathToTry;
     let foundPath = null;
@@ -52,96 +48,43 @@ function loadGraphDefinition() {
     console.log(`[GRAPH_BUILDER] Current __dirname: ${__dirname}`);
 
     // Check local dev path first
-    if ((process.env.NETLIFY_DEV || process.env.NODE_ENV === 'development') && __dirname.includes(path.join('headline_analyzer', 'src'))) {
+    // Adjusted local dev check: if .env is present one level up (project root for local)
+    // or if NETLIFY_DEV is set, and the local path exists.
+    const isLikelyLocalDev = (process.env.NETLIFY_DEV || process.env.NODE_ENV === 'development');
+    
+    if (isLikelyLocalDev && __dirname.includes(path.join('headline_analyzer', 'src'))) {
         console.log(`[GRAPH_BUILDER] Detected local dev structure. Trying local path: ${localDevConfigPath}`);
         if (fs.existsSync(localDevConfigPath)) {
             foundPath = localDevConfigPath;
         }
     }
 
-    // If not found locally, try common deployed paths
+    // If not found locally, or not local dev, try the deployed Lambda path
     if (!foundPath) {
-        console.log(`[GRAPH_BUILDER] Not found locally or not in local dev mode. Trying deployed paths.`);
-        const pathsToTryInDeployment = [
-            deployedPathRoot, // Try /var/task/graph_config.json (most likely for included_files)
-            // errorLogPath, // The path from your error - might be a red herring but worth a check if others fail
-            // deployedPathInSrcEquivalent, // if src/ content is put in /var/task/src/ (less likely for toplevel included_files)
-        ];
-        
-        // Add the errorLogPath only if it's different from deployedPathRoot to avoid redundant checks
-        // and to explicitly test the path from the error message.
-        // However, given the error path IS deployedPathRoot in your last error, let's simplify.
-        // The error indicates it *is* looking at /var/task/netlify/functions/headline_analyzer/graph_config.json
-        // This means __dirname at that point of code execution IS /var/task/netlify/functions/headline_analyzer/
-        // So, path.resolve(__dirname, 'graph_config.json') IS /var/task/netlify/functions/headline_analyzer/graph_config.json
-
-        // The last error log path WAS: /var/task/netlify/functions/headline_analyzer/graph_config.json
-        // This implies that within the bundled code, __dirname = /var/task/netlify/functions/headline_analyzer/
-        // Therefore, path.resolve(__dirname, 'graph_config.json') would correctly target this.
-        // The problem is simply that the file ISN'T THERE.
-
-        // Let's stick to the most likely scenario for included_files = ["graph_config.json"]
-        // which places the file at the root of /var/task/
-        // If your __dirname for loadGraphDefinition (which is part of the main bundle) is /var/task/
-        // then path.resolve(__dirname, 'graph_config.json') looks for /var/task/graph_config.json.
-
-        // The previous log showed:
-        // [GRAPH_BUILDER] Attempting to load graph_config.json from: /var/task/netlify/functions/headline_analyzer/graph_config.json
-        // This means that at the point `loadGraphDefinition` runs, `__dirname` is `/var/task/netlify/functions/headline_analyzer/`
-        // AND your `deployedPathAttempt` was `path.resolve(__dirname, 'graph_config.json')`.
-        // So the code *is* looking in the right place based on that __dirname.
-
-        // THE ISSUE: `included_files = ["graph_config.json"]` when graph_config.json is at
-        // `repo_root/netlify/functions/headline_analyzer/graph_config.json`
-        // SHOULD place it at `/var/task/graph_config.json` (the root of the unzipped function).
-        // It does NOT create the `netlify/functions/headline_analyzer/` subdirectory structure inside `/var/task/` for this file.
-
-        // THEREFORE, your code should try to load from `/var/task/graph_config.json`.
-        // If `__dirname` is `/var/task/netlify/functions/headline_analyzer/` (as implied by the error path),
-        // then you need to go up a few levels.
-
-        const tryPath1 = path.resolve(__dirname, '../../graph_config.json'); // from /var/task/netlify/functions/headline_analyzer/ up to /var/task/
-        console.log(`[GRAPH_BUILDER] Deployed attempt 1: ${tryPath1}`);
-        if (fs.existsSync(tryPath1)) {
-            foundPath = tryPath1;
-        }
-
-        if (!foundPath) {
-            const tryPath2 = path.resolve(__dirname, '../graph_config.json'); // from /var/task/netlify/functions/headline_analyzer/ up to /var/task/netlify/functions/
-            console.log(`[GRAPH_BUILDER] Deployed attempt 2 (less likely for include_files): ${tryPath2}`);
-             if (fs.existsSync(tryPath2)) {
-                foundPath = tryPath2;
-            }
-        }
-        
-        if (!foundPath) {
-            const tryPath3 = path.resolve(__dirname, 'graph_config.json'); // The path that errored out before
-            console.log(`[GRAPH_BUILDER] Deployed attempt 3 (path from previous error): ${tryPath3}`);
-            if (fs.existsSync(tryPath3)) {
-                foundPath = tryPath3;
-            }
+        console.log(`[GRAPH_BUILDER] Not found locally or not in local dev mode. Trying deployed Lambda path: ${deployedLambdaPath}`);
+        if (fs.existsSync(deployedLambdaPath)) {
+            foundPath = deployedLambdaPath;
         }
     }
 
-
     if (!foundPath) {
-        console.error(`FATAL: Graph configuration file not found after trying multiple paths.`);
+        console.error(`FATAL: Graph configuration file not found after trying a_paths.`);
+        console.error(`  Tried local path: ${localDevConfigPath} (exists: ${fs.existsSync(localDevConfigPath)})`);
+        console.error(`  Tried deployed path: ${deployedLambdaPath} (exists: ${fs.existsSync(deployedLambdaPath)})`);
+        
         // Log directory contents for debugging in deployment
         try {
-            console.log(`[GRAPH_BUILDER] Contents of __dirname (${__dirname}):`, fs.readdirSync(__dirname));
-            const rootTaskDir = path.resolve(__dirname, '../../'); // Attempt to list /var/task
-            if (fs.existsSync(rootTaskDir) && rootTaskDir.includes('var/task')) { // Basic sanity check
-                 console.log(`[GRAPH_BUILDER] Contents of likely /var/task/ (${rootTaskDir}):`, fs.readdirSync(rootTaskDir));
-            }
-            const parentDir = path.resolve(__dirname, '..');
-             if (fs.existsSync(parentDir)) {
-                 console.log(`[GRAPH_BUILDER] Contents of parent dir (${parentDir}):`, fs.readdirSync(parentDir));
-            }
-
+            console.log(`[GRAPH_BUILDER] Contents of __dirname (${__dirname}):`, fs.readdirSync(__dirname)); // Should be ['headline_analyzer.js']
+            const dirLevel1Up = path.resolve(__dirname, '..'); // /var/task/netlify/functions/
+            console.log(`[GRAPH_BUILDER] Contents of ${dirLevel1Up}:`, fs.readdirSync(dirLevel1Up)); // Should be ['headline_analyzer']
+            const dirLevel2Up = path.resolve(__dirname, '../..'); // /var/task/netlify/
+            console.log(`[GRAPH_BUILDER] Contents of ${dirLevel2Up}:`, fs.readdirSync(dirLevel2Up)); // Should be ['functions']
+            const dirLevel3Up = path.resolve(__dirname, '../../..'); // /var/task/
+            console.log(`[GRAPH_BUILDER] Contents of ${dirLevel3Up} (expected /var/task/):`, fs.readdirSync(dirLevel3Up)); // Should show graph_config.json here
         } catch (e) {
             console.error("[GRAPH_BUILDER] Error reading directory for debug:", e.message);
         }
-        throw new Error(`Graph configuration file could not be located.`);
+        throw new Error(`Graph configuration file could not be located after checking common paths.`);
     }
 
     console.log(`[GRAPH_BUILDER] Successfully found and using graph_config.json at: ${foundPath}`);
@@ -153,6 +96,7 @@ function loadGraphDefinition() {
         throw e;
     }
 }
+
 function buildGraph() {
     const { nodeDefinitions, graphEdges, entryPointNodeId } = loadGraphDefinition();
 
