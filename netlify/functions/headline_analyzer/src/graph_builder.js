@@ -113,7 +113,7 @@ function buildGraph() {
 
     const appGraph = new StateGraph({ channels: appStateChannels });
 
-    // Add all nodes defined in nodeDefinitions
+    // Add all nodes defined in nodeDefinitions ...
     for (const nodeConfig of nodeDefinitions) {
         let langGraphNodeFunction;
 
