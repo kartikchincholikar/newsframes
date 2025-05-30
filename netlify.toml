@@ -1,14 +1,5 @@
 [build]
   functions = "netlify/functions"
 
-[functions] # This is the general section for global function settings
-  node_bundler = "esbuild" # You had this before, good to keep
-
-  # Specific configuration for your 'headline_analyzer' function
-  [functions.headline_analyzer] # USE SINGLE BRACKETS HERE
-  # This path is relative to the function's directory root
-  # (netlify/functions/headline_analyzer/).
-  # So, "graph_config.json" means it will take the file from
-  # netlify/functions/headline_analyzer/graph_config.json
-  # and include it at the root of the deployment package (/var/task/graph_config.json).
-  included_files = ["graph_config.json"]
+[functions]
+  node_bundler = "esbuild"
