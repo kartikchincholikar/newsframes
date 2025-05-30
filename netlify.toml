@@ -2,13 +2,12 @@
 
 [build]
   functions = "netlify/functions"
-  # If you have no static assets to publish, you can often omit the publish line.
-  # Netlify will focus on deploying the functions.
 
-[dev]
-  # `netlify dev` will pick up the functions from the build.functions setting.
-  # port = 8888 # Optional: specify a port for the local dev server
 
-# Function-specific settings
-[functions."headline_analyzer"]
-  node_bundler = "esbuild" # Optional: for potentially faster bundling
+[[functions.headline_analyzer]]
+  # This path is relative to the function's directory root
+  # (netlify/functions/headline_analyzer/).
+  # So, "graph_config.json" means it will take the file from
+  # netlify/functions/headline_analyzer/graph_config.json
+  # and include it at the root of the deployment package (/var/task/graph_config.json).
+  included_files = ["graph_config.json"]

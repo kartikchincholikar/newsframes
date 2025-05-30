@@ -28,28 +28,30 @@ function interpolateTemplate(template, data) {
 
 // Function to load graph definition from graph_config.json in the project root
 function loadGraphDefinition() {
-    // const configPath = path.resolve(__dirname, '../graph_config.json'); // Path from src/ to project root
+    // When bundled, code from 'src' often ends up in the function's root directory in the package.
+    // __dirname will likely be /var/task/ (or wherever the handler runs from).
+    // We want to access graph_config.json, which we will ensure is also at /var/task/graph_config.json
     const configPath = path.resolve(__dirname, 'graph_config.json');
-    if (!fs.existsSync(configPath)) {
-        console.error(`FATAL: Graph configuration file not found at ${configPath}.`);
-        console.error("Please create 'graph_config.json' in the project root.");
-        // Create a very basic default if it doesn't exist to avoid crashing,
-        // but user should really create this.
-        const defaultConfig = {
-            entryPointNodeId: "default_input_node",
-            nodeDefinitions: [{
-                id: "default_input_node",
-                displayName: "Default Input",
-                type: "passthrough_node", // A conceptual type if needed
-                stateOutputKey: "output_from_default"
-            }],
-            graphEdges: [{ source: "default_input_node", target: "END" }]
-        };
-        // fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8'); // Optionally create
-        // return defaultConfig;
-        throw new Error(`Graph configuration file not found at ${configPath}.`);
+    
+    // For local dev, if graph_builder is in src/ and graph_config.json is one level up:
+    const localDevConfigPath = path.resolve(__dirname, '../graph_config.json');
+
+    let pathToTry = configPath; // Assume deployed path first
+    if (process.env.NETLIFY_DEV && fs.existsSync(localDevConfigPath)) { // Check if running in netlify dev
+        console.log("[GRAPH_BUILDER] Detected local dev, trying local path for config.");
+        pathToTry = localDevConfigPath;
+    } else {
+         console.log("[GRAPH_BUILDER] Assuming deployed environment or local path not found, trying bundled path for config.");
     }
-    const rawConfig = fs.readFileSync(configPath, 'utf-8');
+    console.log(`[GRAPH_BUILDER] Attempting to load graph_config.json from: ${pathToTry}`);
+
+
+    if (!fs.existsSync(pathToTry)) {
+        console.error(`FATAL: Graph configuration file not found. Tried: ${pathToTry}`);
+        // ... error logging ...
+        throw new Error(`Graph configuration file not found. Tried: ${pathToTry}`);
+    }
+    const rawConfig = fs.readFileSync(pathToTry, 'utf-8');
     try {
         return JSON.parse(rawConfig);
     } catch (e) {
