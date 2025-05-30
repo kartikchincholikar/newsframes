@@ -28,7 +28,8 @@ function interpolateTemplate(template, data) {
 
 // Function to load graph definition from graph_config.json in the project root
 function loadGraphDefinition() {
-    const configPath = path.resolve(__dirname, '../graph_config.json'); // Path from src/ to project root
+    // const configPath = path.resolve(__dirname, '../graph_config.json'); // Path from src/ to project root
+    const configPath = path.resolve(__dirname, 'graph_config.json');
     if (!fs.existsSync(configPath)) {
         console.error(`FATAL: Graph configuration file not found at ${configPath}.`);
         console.error("Please create 'graph_config.json' in the project root.");

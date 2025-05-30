@@ -11,5 +11,4 @@
 
 # Function-specific settings
 [functions."headline_analyzer"]
-  included_files = ["./graph_config.json"] # Ensures graph_config.json is deployed with the function
   node_bundler = "esbuild" # Optional: for potentially faster bundling
