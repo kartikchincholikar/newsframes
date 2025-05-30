@@ -1,11 +1,22 @@
+// src/llm_utils.js
 const fetch = require('node-fetch');
 
 function extractAndParseJson(text) {
-    // (Your existing robust extractAndParseJson function - unchanged)
     if (!text || typeof text !== 'string') {
         return null;
     }
-    let cleanedText = text.replace(/^(?:json)?\s*```json\s*/, '').replace(/\s*```\s*$/, '').replace(/^(?:json)?\s*/, '').replace(/\s*$/, '').trim();
+    // Simplified cleaning - assumes Gemini's JSON output is mostly clean
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith("```json")) {
+        cleanedText = cleanedText.substring(7);
+    } else if (cleanedText.startsWith("```")) {
+        cleanedText = cleanedText.substring(3);
+    }
+    if (cleanedText.endsWith("```")) {
+        cleanedText = cleanedText.substring(0, cleanedText.length - 3);
+    }
+    cleanedText = cleanedText.trim();
+
     const firstBrace = cleanedText.indexOf('{');
     const lastBrace = cleanedText.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -13,147 +24,183 @@ function extractAndParseJson(text) {
         try {
             return JSON.parse(potentialJson);
         } catch (e) {
-            console.warn('JSON parse failed after extraction:', e.message, 'Extracted:', potentialJson.substring(0, 200));
+            console.warn('JSON parse failed after substring extraction:', e.message, 'Extracted Substring:', potentialJson.substring(0, 200));
+            // Fallback: try parsing the cleanedText directly
+            try {
+                return JSON.parse(cleanedText);
+            } catch (e2) {
+                console.warn('JSON parse failed on cleanedText:', e2.message, 'Cleaned Text:', cleanedText.substring(0,200));
+                return null;
+            }
+        }
+    } else {
+         try {
+            return JSON.parse(cleanedText);
+        } catch (e3) {
+            console.warn('JSON parse failed on original cleanedText (no/invalid braces):', e3.message, 'Cleaned Text:', cleanedText.substring(0,200));
             return null;
         }
     }
-    return null;
 }
 
-// Simple templating function (replace with Handlebars or similar if more complex logic is needed)
+
 function renderTemplate(templateString, data) {
+    if (typeof templateString !== 'string') {
+        console.warn("renderTemplate: templateString is not a string", templateString);
+        return ""; // Return empty string for invalid templates
+    }
     let rendered = templateString;
-    // Handle {{#each}}...{{/each}} blocks
-    rendered = rendered.replace(/{{#(\w+)}}([\s\S]*?){{\/\1}}/g, (match, key, content) => {
-        if (data[key] && Array.isArray(data[key])) {
-            return data[key].map(item => renderTemplate(content, { ...data, ...item })).join('');
-        }
-        return '';
-    });
-    // Handle {{variable}} and {{{variable}}}
+    // Simpler {{variable}} replacement. Your existing one is more complex.
+    // This basic one assumes data keys don't contain regex special characters.
     for (const key in data) {
         if (data.hasOwnProperty(key)) {
             const value = data[key];
-            // {{{variable}}} for unescaped HTML/JSON strings
-            const unescapedRegex = new RegExp(`{{{${key}}}}`, 'g');
-            rendered = rendered.replace(unescapedRegex, typeof value === 'string' ? value : JSON.stringify(value, null, 2));
-            // {{variable}} for regular values
-            const escapedRegex = new RegExp(`{{${key}}}`, 'g');
-            rendered = rendered.replace(escapedRegex, String(value));
+            // Ensure value is stringifiable for the template
+            const stringValue = (typeof value === 'object' && value !== null) ? JSON.stringify(value, null, 2) : String(value);
+            const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+            rendered = rendered.replace(regex, stringValue);
         }
     }
     return rendered;
 }
 
-
-function prepareMessages(promptDefinition, state, graphConfig) {
-    const templateData = {};
-
-    // Map state values to template variables based on promptDefinition.input_mapping
-    if (promptDefinition.input_mapping) {
-        for (const templateVar in promptDefinition.input_mapping) {
-            const stateKey = promptDefinition.input_mapping[templateVar];
-            // Handle dot notation for nested state access, e.g., "analysis1_result.frames"
-            let value = state;
-            stateKey.split('.').forEach(part => {
-                if (value && typeof value === 'object' && part in value) {
-                    value = value[part];
-                } else {
-                    value = undefined; // Key not found
-                }
-            });
-            templateData[templateVar] = value !== undefined ? value : ''; // Default to empty string if not found
-        }
+// This function now takes the 'promptConfig' from graph_config.json's nodeDefinition
+// and the current 'state'. It constructs the messages array.
+function buildMessagesFromPromptConfig(promptConfig, state, nodeSpecificArgs = {}) {
+    if (!promptConfig || !promptConfig.systemMessage || !promptConfig.userInputTemplate) {
+        console.error("buildMessagesFromPromptConfig: promptConfig is incomplete.", promptConfig);
+        return [{ role: 'user', parts: [{ text: "Error: Prompt configuration is incomplete." }] }]; // Return error message
     }
 
-    // Add JSON schema and examples to templateData
-    templateData.json_schema = JSON.stringify(promptDefinition.json_schema, null, 2);
-    templateData.examples = promptDefinition.examples || []; // Ensure examples is an array
+    const templateData = { ...state, ...nodeSpecificArgs }; // Combine state with any specific args for this node
 
-    // Include all analysis results for synthesis prompt (special case for now)
-    // This could be generalized if other prompts need many specific state parts
-    if (promptDefinition.id.startsWith("SYNTHESIS")) {
-        templateData.analysis1_result_json = JSON.stringify(state.analysis1_result || {error: "Not run"}, null, 2);
-        templateData.analysis2_result_json = JSON.stringify(state.analysis2_result || {error: "Not run"}, null, 2);
-        templateData.analysis3_result_json = JSON.stringify(state.analysis3_result || {error: "Not run"}, null, 2);
-        templateData.analysis4_result_json = JSON.stringify(state.analysis4_result || {error: "Not run"}, null, 2);
-        templateData.analysis5_result_json = JSON.stringify(state.analysis5_result || {error: "Not run"}, null, 2);
-        templateData.agent1_had_error = !!(state.analysis1_result?.error);
-        templateData.agent2_had_error = !!(state.analysis2_result?.error);
-        templateData.agent3_had_error = !!(state.analysis3_result?.error);
-        templateData.agent4_had_error = !!(state.analysis4_result?.error);
-        templateData.agent5_had_error = !!(state.analysis5_result?.error);
+    const messages = [];
+
+    if (promptConfig.systemMessage) {
+        messages.push({
+            role: 'system', // This will be mapped to 'user' for Gemini later
+            content: renderTemplate(promptConfig.systemMessage, templateData)
+        });
     }
-
-
-    return promptDefinition.messages_template.map(msgTmpl => ({
-        role: msgTmpl.role === 'system' || msgTmpl.role === 'developer' ? 'user' : msgTmpl.role, // Gemini specific role mapping
-        parts: [{ text: renderTemplate(msgTmpl.content, templateData) }]
-    }));
+    if (promptConfig.developerInstructionsTemplate) {
+        messages.push({
+            role: 'developer', // Mapped to 'user'
+            content: renderTemplate(promptConfig.developerInstructionsTemplate, templateData)
+        });
+    }
+    if (promptConfig.userInputTemplate) {
+        messages.push({
+            role: 'user',
+            content: renderTemplate(promptConfig.userInputTemplate, templateData)
+        });
+    }
+    return messages;
 }
 
 
-async function callModel(promptDefinition, state, graphConfig, modelOverride = null) {
+// This function adapts message roles for the Gemini API
+function mapMessagesForGemini(messagesFromBuilder) {
+    if (!Array.isArray(messagesFromBuilder)) {
+        console.error("mapMessagesForGemini: input is not an array", messagesFromBuilder);
+        return [{ role: 'user', parts: [{ text: "Error: Invalid message array." }] }];
+    }
+
+    return messagesFromBuilder.map(msg => {
+        if (!msg || typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+            console.warn("mapMessagesForGemini: Invalid message structure:", msg);
+            return { role: 'user', parts: [{ text: `Error: Malformed message. Role: ${msg?.role}` }] };
+        }
+
+        let geminiRole = 'user'; // Default
+        const roleLower = msg.role.toLowerCase();
+
+        if (roleLower.startsWith('system') || roleLower.startsWith('developer')) {
+            geminiRole = 'user';
+        } else if (roleLower.startsWith('assistant') || roleLower.startsWith('ai') || roleLower.startsWith('model')) {
+            geminiRole = 'model';
+        } else if (roleLower === 'user') {
+            geminiRole = 'user';
+        }
+        // else, it's 'user' by default. Could add a warning for unknown roles.
+
+        return {
+            role: geminiRole,
+            parts: [{ text: msg.content }]
+        };
+    });
+}
+
+
+async function callModel(
+    messages, // This will be the array from buildMessagesFromPromptConfig
+    modelName = 'gemini-1.5-flash-latest', // modelName from promptConfig or default
+    generationArgs = {} // temperature, maxOutputTokens from promptConfig or defaults
+) {
     if (!process.env.GEMINI_API_KEY) {
         return { error: 'Missing GEMINI_API_KEY', rawContent: '' };
     }
-    const model = modelOverride || promptDefinition.model || 'gemini-1.5-flash-latest';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
-    const contents = prepareMessages(promptDefinition, state, graphConfig);
+    const geminiContents = mapMessagesForGemini(messages);
+
+    // Check if mapping introduced errors
+    if (geminiContents.some(c => c.parts[0].text.startsWith("Error:"))) {
+        console.error("callModel: Error during message role mapping for Gemini.", geminiContents);
+        return { error: "Internal error: Malformed message structure for LLM after role mapping.", rawContent: JSON.stringify(geminiContents) };
+    }
 
     const payload = {
-        contents,
+        contents: geminiContents,
         generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 2048, // Consider making this configurable per prompt
+            temperature: generationArgs.temperature || 0.3,
+            maxOutputTokens: generationArgs.maxOutputTokens || 2048,
             response_mime_type: "application/json"
         }
     };
+    // console.log(`[LLM_UTILS] Calling ${modelName} with payload:`, JSON.stringify(payload, null, 2).substring(0,500));
 
     try {
-        // console.log(`Calling model ${model} with payload:`, JSON.stringify(payload, null, 2)); // Verbose logging
         const res = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': process.env.GEMINI_API_KEY
-            },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
             body: JSON.stringify(payload)
         });
 
+        const responseBodyText = await res.text(); // Get text first for better error details
+
         if (!res.ok) {
-            let errorText = `Status code ${res.status}`;
+            console.error(`Model API error: ${res.status}. Response body: ${responseBodyText.substring(0, 500)}`);
+            let errorDetail = responseBodyText.substring(0, 200);
             try {
-                const errorJson = await res.json();
-                errorText = JSON.stringify(errorJson);
-            } catch (e) {
-                try { errorText = await res.text(); } catch (e2) { /* Ignore */ }
-            }
-            console.error('Model API error:', res.status, errorText);
-            return { error: `Model API error: ${res.status}. Details: ${errorText.substring(0, 200)}`, rawContent: '' };
+                const errorJson = JSON.parse(responseBodyText); // Try to parse if it's JSON error
+                errorDetail = JSON.stringify(errorJson.error || errorJson);
+            } catch (e) { /* already have text */ }
+            return { error: `Model API error: ${res.status}. Details: ${errorDetail}`, rawContent: responseBodyText };
         }
 
-        const responseJson = await res.json();
+        const responseJson = JSON.parse(responseBodyText); // Parse if res.ok
         const rawContent = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const finishReason = responseJson?.candidates?.[0]?.finishReason;
+
+        if (finishReason && finishReason !== "STOP" && finishReason !== "MAX_TOKENS") {
+             console.warn(`Gemini generation for ${modelName} finished with reason: ${finishReason}.`);
+             let errMessage = `Content generation stopped due to: ${finishReason}.`;
+             if (finishReason === "SAFETY") errMessage = "Content generation stopped due to safety settings.";
+             else if (finishReason === "RECITATION") errMessage = "Content generation stopped due to recitation policy.";
+             return { error: errMessage, rawContent: rawContent || `Blocked by ${finishReason}.`, fullResponse: responseJson };
+        }
 
         if (typeof rawContent !== 'string' || rawContent.trim() === '') {
-            console.warn('Received empty or non-string content from model:', rawContent);
-            return {
-                error: "Model returned empty or invalid content",
-                rawContent: rawContent || ''
-            };
+            console.warn('Received empty or non-string content from model:', responseJson);
+            return { error: "Model returned empty or invalid content", rawContent: rawContent || '', fullResponse: responseJson };
         }
 
-        const parsedJson = extractAndParseJson(rawContent);
+        const parsedJson = extractAndParseJson(rawContent); // Use your robust parser
         if (parsedJson !== null) {
-            return parsedJson; // Successfully parsed JSON
+            return parsedJson;
         } else {
             console.error('Failed to parse JSON from model response. Raw content:', rawContent.substring(0, 500));
-            return {
-                error: "Failed to parse JSON response from model",
-                rawContent: rawContent
-            };
+            return { error: "Failed to parse JSON response from model", rawContent: rawContent };
         }
     } catch (error) {
         console.error('Error calling model or processing response:', error);
@@ -162,8 +209,8 @@ async function callModel(promptDefinition, state, graphConfig, modelOverride = n
 }
 
 module.exports = {
-    extractAndParseJson,
+    extractAndParseJson, // Keep your robust one
     callModel,
-    prepareMessages, // Export for testing/debugging if needed
-    renderTemplate
+    buildMessagesFromPromptConfig, // New helper
+    renderTemplate // Keep your template renderer
 };

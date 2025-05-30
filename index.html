@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LangGraph News Frames Visualizer</title>
     <style>
+        /* ... (your existing CSS - no changes needed here for this specific request) ... */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 1000px;
+            max-width: 1200px; /* Wider for better graph display */
             margin: 20px auto;
             padding: 20px;
             background-color: #f4f7f6;
@@ -33,6 +34,11 @@
             margin-bottom: 10px;
             border-bottom: 1px solid #ecf0f1;
             padding-bottom: 5px;
+        }
+        h4 {
+            color: #7f8c8d;
+            margin-top: 15px;
+            font-size: 1.1em;
         }
 
         .input-area {
@@ -95,37 +101,63 @@
 
         .graph-flow {
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Overall flow is top to bottom */
             align-items: center;
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f9f9f9;
             border-radius: 8px;
+            overflow-x: auto; /* Allow horizontal scrolling if stages are wide */
         }
 
         .graph-stage {
-            display: flex;
+            display: flex; /* Default for single nodes */
+            flex-direction: row; /* Nodes within a stage are horizontal */
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* Align items at the start for varying heights */
             margin-bottom: 10px;
             width: 100%;
         }
         
-        .parallel-group-stage { /* Specific class for stages holding parallel nodes */
-            justify-content: space-around;
+        /* For stages that contain parallel nodes */
+        .parallel-group-container .graph-stage-nodes {
+            display: flex;
+            flex-direction: row; /* Sub-nodes of a parallel group are horizontal */
+            justify-content: space-around; /* Distribute sub-nodes */
+            flex-wrap: wrap; /* Allow wrapping if too many */
         }
+        .parallel-group-container { /* Container for the parallel group title and its nodes */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px dashed #bdc3c7;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 6px;
+            background-color: #fdfefe;
+        }
+        .parallel-group-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
 
         .graph-node {
             background-color: #e9ecef;
             border: 1px solid #ced4da;
-            padding: 15px;
-            margin: 5px 10px;
+            padding: 10px 15px; /* Adjusted padding */
+            margin: 5px; /* Reduced margin for tighter packing */
             border-radius: 8px;
             text-align: center;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            min-width: 160px;
+            min-width: 150px; /* Slightly reduced min-width */
+            max-width: 220px; /* Max width to prevent overly wide nodes */
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 0.85em; /* Smaller font for more text */
+            word-break: break-word;
         }
         .graph-node:hover {
             transform: translateY(-3px);
@@ -138,13 +170,24 @@
         }
         .graph-node.error-node { border-left: 5px solid #e74c3c; background-color: #fcefee; }
         .graph-node.success-node { border-left: 5px solid #2ecc71; background-color: #e6f7f0; }
+        
+        /* Node type specific styling (examples) */
+        .graph-node[data-client-node-type="input"],
+        .graph-node[data-client-node-type="initial_processing"] { background-color: #e8f6f3; border-color: #a2d9ce; }
+        .graph-node[data-client-node-type="llm_processing"] { background-color: #f4ecf7; border-color: #d7bde2; }
+        .graph-node[data-client-node-type="reversion_step"] { background-color: #fef9e7; border-color: #f9e79f; }
+        .graph-node[data-client-node-type="final_step"] { background-color: #eafaf1; border-color: #a9dfbf; }
+
 
         .node-connector {
             font-size: 1.5em;
             color: #adb5bd;
-            margin: 5px 0;
+            margin: 10px 0; /* Increased margin for clarity */
             text-align: center;
+            width: 100%;
         }
+        .node-connector.hidden { display: none; }
+
 
         .node-details-area {
             margin-top: 20px;
@@ -166,16 +209,22 @@
             word-wrap: break-word;
         }
 
-        .final-output-area {
+        .all-outputs-area { /* Changed from final-output-area */
             margin-top: 30px;
             padding: 20px;
             background-color: #e6f7ff;
             border: 1px solid #aed6f1;
             border-radius: 8px;
-            text-align: center;
         }
-        .final-output-area h3 { color: #1f618d; }
-        .final-output-area p { font-size: 1.1em; }
+        .all-outputs-area h3 { color: #1f618d; text-align: center; }
+        .output-item {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dotted #aed6f1;
+        }
+        .output-item:last-child { border-bottom: none; }
+        .output-item p { font-size: 1.05em; margin: 5px 0; }
+        .output-item strong { color: #2980b9; }
     </style>
 </head>
 <body>
@@ -187,29 +236,26 @@
             <button id="generate-btn">Analyze with LangGraph</button>
         </div>
 
-        <div class="final-output-area" id="final-output">
-            <h3>Flipped Headline</h3>
-            <p id="flipped-headline-text">Pending analysis...</p>
-            <p id="db-save-status-text"></p>
-        </div>
-
         <div id="loader" class="loader"></div>
         <div id="error-message" class="message error"></div>
         <div id="status-message" class="message"></div>
 
+        <div class="all-outputs-area" id="all-outputs-display" style="display: none;">
+            <h3>Processed Headline Variations</h3>
+            <div id="headlines-list">
+                <!-- Headlines will be dynamically inserted here -->
+            </div>
+            <p id="db-save-status-text" style="text-align:center; margin-top:15px; font-weight:bold;"></p>
+        </div>
+
         <div class="graph-visualization-area" id="graph-viz-area">
             <h2>Graph Execution Flow</h2>
-            <div class="graph-flow" id="dynamic-graph-flow">
-                <!-- Graph nodes will be dynamically inserted here -->
-            </div>
-
+            <div class="graph-flow" id="dynamic-graph-flow"></div>
             <div class="node-details-area" id="node-details">
                 <h3>Node Details</h3>
                 <p>Click on a node in the graph above to see its output.</p>
                 <pre id="node-output-pre">{}</pre>
             </div>
-
-
         </div>
     </div>
 
@@ -225,17 +271,45 @@
         const nodeDetailsContainer = document.getElementById('node-details');
         const nodeOutputPre = document.getElementById('node-output-pre');
         
-        const finalOutputArea = document.getElementById('final-output');
-        const flippedHeadlineText = document.getElementById('flipped-headline-text');
+        const allOutputsDisplayArea = document.getElementById('all-outputs-display');
+        const headlinesListContainer = document.getElementById('headlines-list');
         const dbSaveStatusText = document.getElementById('db-save-status-text');
 
         let currentGraphState = null;
         let currentGraphStructure = null;
 
+        // Keys from backend 'data' object that represent final, reverted headlines
+        // AND the user-friendly names for them.
+        // ** ADD NEW KEYS HERE **
+        const outputHeadlineKeys = {
+            flipped_headline: "Main Synthesized Flip", 
+            speculative_reverted_headline: "Speculative Reframe",
+            framing_type_reverted_headline: "Framing Type Flip Suggestion",
+            violence_type_reverted_headline: "Violence Type Reframe",
+            cognitive_frames_reverted_headline: "Cognitive Frame Flip", // New
+            euphemism_reverted_headline: "Euphemism Literal Rewrite"  // New
+        };
+
+        // Keys for reverter details objects, mapping reverter node ID to its details key in the state
+        // This helps in attachNodeClickListeners to show the correct details object.
+        // The backend structure (e.g. getGraphStructureForClient in handler) should provide `detailsKey`
+        // for each node. If a reverter node's detailsKey is already set correctly by backend to
+        // e.g. "cognitive_frames_reverter_details", then this map might not be strictly necessary
+        // for click handling, but it's good for clarity.
+        const reverterNodeDetailsKeys = {
+            "main_headline_reverter": "properNoun_replacement2_details",
+            "speculative_reverter": "speculative_reverter_details",
+            "framing_type_reverter": "framing_type_reverter_details",
+            "violence_type_reverter": "violence_type_reverter_details",
+            "cognitive_frames_reverter": "cognitive_frames_reverter_details", // New
+            "euphemism_reverter": "euphemism_reverter_details"          // New
+        };
+
+
         function escapeHtml(unsafe) {
-            if (unsafe === null || typeof unsafe === 'undefined') return '';
-            return unsafe.toString()
-                .replace(/&/g, "&") // Ensure & is escaped first
+            if (unsafe === null || typeof unsafe === 'undefined' || typeof unsafe !== 'string') return 'N/A';
+            return unsafe
+                .replace(/&/g, "&")
                 .replace(/</g, "<")
                 .replace(/>/g, ">")
                 .replace(/"/g, "\"")
@@ -243,7 +317,7 @@
         }
 
         function showUIMessage(element, text, type = 'error') {
-            element.textContent = text;
+            element.textContent = escapeHtml(text); // Escape text before setting
             element.className = `message ${type}`;
             element.style.display = 'block';
         }
@@ -263,14 +337,14 @@
             loader.style.display = "block";
             generateBtn.disabled = true;
             graphVizArea.style.display = "none";
-            dynamicGraphFlowContainer.innerHTML = ''; // Clear previous dynamic graph
+            allOutputsDisplayArea.style.display = "none";
+            headlinesListContainer.innerHTML = '';
+            dynamicGraphFlowContainer.innerHTML = '';
             nodeOutputPre.textContent = "{}";
             nodeDetailsContainer.querySelector('h3').textContent = "Node Details";
             nodeDetailsContainer.querySelector('p').style.display = 'block';
-            flippedHeadlineText.textContent = "Pending analysis...";
             dbSaveStatusText.textContent = "";
             
-
             try {
                 const response = await fetch('/.netlify/functions/headline_analyzer', {
                     method: 'POST',
@@ -280,18 +354,24 @@
                 const responseData = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(responseData.error || responseData.details || `Request failed: ${response.status}`);
+                    throw new Error(responseData.error || responseData.details || `Request failed with status ${response.status}`);
                 }
                 
                 currentGraphState = responseData.data;
                 currentGraphStructure = responseData.graphStructure;
 
+                console.log("Received graphState:", currentGraphState);
+                console.log("Received graphStructure:", currentGraphStructure);
+
+
                 let uiMessageType = 'success';
                 if (currentGraphState && (
-                    (currentGraphState.raw_analysis1 && currentGraphState.raw_analysis1.error) ||
-                    (currentGraphState.raw_analysis2 && currentGraphState.raw_analysis2.error) ||
-                    (currentGraphState.synthesis_details && currentGraphState.synthesis_details.error) ||
-                    (currentGraphState.db_save_status && !currentGraphState.db_save_status.success)
+                    Object.keys(outputHeadlineKeys).some(key => 
+                        currentGraphState[key] && 
+                        typeof currentGraphState[key] === 'string' && 
+                        (currentGraphState[key].startsWith("Error:") || currentGraphState[key].startsWith("Not applicable") || currentGraphState[key].startsWith("No "))) || // Check for "No ..." messages
+                    (currentGraphState.db_save_status && !currentGraphState.db_save_status.success) ||
+                    (responseData.errors && responseData.errors.length > 0)
                 )) {
                     uiMessageType = 'warning';
                 }
@@ -299,12 +379,13 @@
 
                 if (currentGraphStructure && currentGraphState) {
                     renderGraphFlow(currentGraphStructure);
-                    updateNodeStatusesAndFinalOutput(currentGraphStructure, currentGraphState);
+                    updateUIWithResults(currentGraphStructure, currentGraphState);
                     graphVizArea.style.display = "block";
+                    allOutputsDisplayArea.style.display = "block";
                 } else {
-                    console.warn("Graph structure or state not received from backend.");
+                    showUIMessage(errorMessage, "Error: Graph structure or data not fully available from backend.");
                     dynamicGraphFlowContainer.innerHTML = '<p>Error: Graph structure or data not available.</p>';
-                     graphVizArea.style.display = "block"; // Show the error message
+                    graphVizArea.style.display = "block";
                 }
 
             } catch (error) {
@@ -318,14 +399,21 @@
             }
         });
         
-        function createNodeElement(id, displayName, detailsKey, statusKey) {
+        function createNodeElement(nodeInfo, isSubNode = false) {
             const nodeDiv = document.createElement('div');
             nodeDiv.className = 'graph-node';
-            nodeDiv.id = `node-${id}`; // Ensure unique DOM ID from structure
-            nodeDiv.textContent = displayName;
-            nodeDiv.dataset.detailsKey = detailsKey; 
-            nodeDiv.dataset.statusKey = statusKey;   
-            nodeDiv.dataset.nodeDisplayName = displayName; 
+            // Ensure ID is unique and valid for DOM: use nodeInfo.id which should be unique from graph_config
+            const sanitizedNodeId = nodeInfo.id.replace(/[^a-zA-Z0-9-_]/g, '_');
+            nodeDiv.id = `node-el-${sanitizedNodeId}`; // Prefix to avoid clashes with other IDs
+            
+            nodeDiv.textContent = nodeInfo.displayName;
+            nodeDiv.dataset.detailsKey = nodeInfo.detailsKey; 
+            nodeDiv.dataset.statusKey = nodeInfo.statusKey;   
+            nodeDiv.dataset.nodeId = nodeInfo.id; // Store original backend ID
+            nodeDiv.dataset.nodeDisplayName = nodeInfo.displayName;
+            if (nodeInfo.type) {
+                 nodeDiv.dataset.clientNodeType = nodeInfo.type;
+            }
             return nodeDiv;
         }
 
@@ -339,19 +427,33 @@
                     node.classList.add('active');
                     nodeDetailsContainer.querySelector('p').style.display = 'none';
 
-
-                    const detailsKey = node.dataset.detailsKey;
+                    const originalNodeId = node.dataset.nodeId; // The ID from graph_config.json
                     const displayName = node.dataset.nodeDisplayName;
                     let detailsToShow = {};
+                    
+                    // Determine the key for fetching details from currentGraphState
+                    // Default to the node's own detailsKey from graphStructure
+                    let keyForDetailsInState = node.dataset.detailsKey; 
 
-                    if (detailsKey === "input_headline") { // Special case for input_headline string
+                    // If it's a reverter node, use the conventional reverter details key
+                    if (reverterNodeDetailsKeys[originalNodeId]) {
+                        keyForDetailsInState = reverterNodeDetailsKeys[originalNodeId];
+                    } 
+                    // For analyzer sub-tasks, their detailsKey in graphStructure should point to their main output
+                    // e.g., cognitive_frames_analysis_result
+                    
+                    if (originalNodeId === "input_display") { // Special case for our pseudo input node
                         detailsToShow = { "input_headline": currentGraphState.input_headline };
-                    } else if (detailsKey && currentGraphState.hasOwnProperty(detailsKey)) {
-                        detailsToShow = { [detailsKey]: currentGraphState[detailsKey] };
-                    } else if (detailsKey) {
-                        detailsToShow = { message: `No data available for ${displayName} (key: ${detailsKey}).` };
+                    } else if (keyForDetailsInState && currentGraphState.hasOwnProperty(keyForDetailsInState)) {
+                        detailsToShow = { [keyForDetailsInState]: currentGraphState[keyForDetailsInState] };
                     } else {
-                        detailsToShow = { message: `No details key configured for ${displayName}.` };
+                        // Fallback if specific key not found, try detailsKey again (might be redundant here)
+                        const fallbackDetailsKey = node.dataset.detailsKey;
+                        if (fallbackDetailsKey && currentGraphState.hasOwnProperty(fallbackDetailsKey)) {
+                           detailsToShow = { [fallbackDetailsKey]: currentGraphState[fallbackDetailsKey] };
+                        } else {
+                           detailsToShow = { message: `No data available in currentGraphState for ${displayName} (tried key: ${keyForDetailsInState}).` };
+                        }
                     }
                     
                     nodeOutputPre.textContent = JSON.stringify(detailsToShow, null, 2);
@@ -369,113 +471,187 @@
             }
 
             structure.nodes.forEach((stageInfo, index) => {
-                const stageDiv = document.createElement('div');
-                stageDiv.className = 'graph-stage';
+                const stageOuterDiv = document.createElement('div');
+                stageOuterDiv.className = 'graph-stage'; 
 
-                if (stageInfo.type === 'input') {
-                    const nodeDiv = createNodeElement(stageInfo.id, stageInfo.displayName, stageInfo.detailsKey, stageInfo.statusKey);
-                    stageDiv.appendChild(nodeDiv);
-                } else if (stageInfo.type === 'parallel-group') {
-                    stageDiv.classList.add('parallel-group-stage');
+                if (stageInfo.type === 'parallel-group') {
+                    const groupContainer = document.createElement('div');
+                    groupContainer.className = 'parallel-group-container';
+                    groupContainer.id = `node-el-${stageInfo.id.replace(/[^a-zA-Z0-9-_]/g, '_')}`; // ID for the group itself
+                    groupContainer.dataset.nodeId = stageInfo.id; // Store original group ID
+                    groupContainer.dataset.nodeDisplayName = stageInfo.displayName;
+                    // No details/status key for the group itself unless backend provides one for overall group status
+
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = 'parallel-group-title';
+                    groupTitle.textContent = stageInfo.displayName;
+                    groupContainer.appendChild(groupTitle);
+
+                    const stageNodesDiv = document.createElement('div');
+                    stageNodesDiv.className = 'graph-stage-nodes';
+                    groupContainer.appendChild(stageNodesDiv);
+
                     stageInfo.subNodes.forEach(subNodeInfo => {
-                        const nodeDiv = createNodeElement(subNodeInfo.id, subNodeInfo.displayName, subNodeInfo.detailsKey, subNodeInfo.statusKey);
-                        stageDiv.appendChild(nodeDiv);
+                        const nodeDiv = createNodeElement(subNodeInfo, true);
+                        stageNodesDiv.appendChild(nodeDiv);
                     });
-                } else if (stageInfo.type === 'sequential') {
-                    const nodeDiv = createNodeElement(stageInfo.id, stageInfo.displayName, stageInfo.detailsKey, stageInfo.statusKey);
-                    stageDiv.appendChild(nodeDiv);
+                    stageOuterDiv.appendChild(groupContainer);
+                } else { 
+                    const nodeDiv = createNodeElement(stageInfo);
+                    stageOuterDiv.appendChild(nodeDiv);
                 }
                 
-                dynamicGraphFlowContainer.appendChild(stageDiv);
+                dynamicGraphFlowContainer.appendChild(stageOuterDiv);
 
                 if (index < structure.nodes.length - 1) {
                     const connectorDiv = document.createElement('div');
                     connectorDiv.className = 'node-connector';
-                    if (stageInfo.type === 'parallel-group' && stageInfo.subNodes && stageInfo.subNodes.length > 1) {
-                        connectorDiv.innerHTML = '<div>↓ ↓</div>'; 
-                    } else {
-                        connectorDiv.innerHTML = '↓';
-                    }
+                    connectorDiv.innerHTML = '↓'; // Simplified connector
                     dynamicGraphFlowContainer.appendChild(connectorDiv);
                 }
             });
             attachNodeClickListeners();
         }
 
-        function updateNodeStatusesAndFinalOutput(structure, graphData) {
-            if (!structure || !structure.nodes || !graphData) return;
+        function updateUIWithResults(structure, graphData) {
+            if (!graphData) return; // No state, nothing to update
 
-            // Update final output area
-            flippedHeadlineText.textContent = escapeHtml(graphData.flipped_headline || "N/A");
+            // 1. Populate All Processed Headlines Area
+            headlinesListContainer.innerHTML = '';
+            let hasActualHeadlineOutput = false;
+            for (const stateKey in outputHeadlineKeys) { // Iterate over defined output keys
+                const displayName = outputHeadlineKeys[stateKey];
+                const headlineValue = graphData[stateKey];
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'output-item';
+                
+                let textContent = `<p><strong>${escapeHtml(displayName)}:</strong> `;
+                if (headlineValue && typeof headlineValue === 'string' && 
+                    !(headlineValue.startsWith("Error:") || 
+                      headlineValue.startsWith("Not applicable") || 
+                      headlineValue.startsWith("No ") || // Catches "No framing detected..." etc.
+                      headlineValue.startsWith("Data not available"))) {
+                    textContent += `${escapeHtml(headlineValue)}`;
+                    hasActualHeadlineOutput = true;
+                } else {
+                    textContent += `<span style="color:#7f8c8d;">${escapeHtml(headlineValue) || 'N/A'}</span>`;
+                }
+                textContent += `</p>`;
+                itemDiv.innerHTML = textContent;
+                headlinesListContainer.appendChild(itemDiv);
+            }
+            if (!hasActualHeadlineOutput && headlinesListContainer.children.length > 0) {
+                 // If we showed items but none were actual headlines (all N/A or errors)
+                 // headlinesListContainer.innerHTML = '<p>No valid processed headline variations were generated.</p>';
+                 // Keep the N/A messages instead of replacing
+            } else if (headlinesListContainer.children.length === 0) {
+                 headlinesListContainer.innerHTML = '<p>No processed headline variations available.</p>';
+            }
+
+
+            // 2. Update DB Save Status
             if (graphData.db_save_status) {
                 dbSaveStatusText.textContent = graphData.db_save_status.success 
-                    ? `Database: Saved successfully.`
+                    ? `Database: Saved successfully (ID: ${graphData.db_save_status.headline_id || 'N/A'}).`
                     : `Database: Save failed. ${escapeHtml(graphData.db_save_status.message || '')}`;
                 dbSaveStatusText.style.color = graphData.db_save_status.success ? 'green' : 'red';
             } else {
                 dbSaveStatusText.textContent = "Database: Status N/A";
-                 dbSaveStatusText.style.color = 'inherit';
+                dbSaveStatusText.style.color = 'inherit';
             }
 
-            // Update node statuses
+            // 3. Update node statuses in the graph visualization
+            if (!structure || !structure.nodes) return; // No graph structure to update statuses on
+
             structure.nodes.forEach(stageInfo => {
-                const processNode = (nodeInfo) => {
-                    const nodeEl = document.getElementById(`node-${nodeInfo.id}`);
+                const processNodeStatus = (nodeInfo) => {
+                    // Use the sanitized ID for querying
+                    const sanitizedNodeId = nodeInfo.id.replace(/[^a-zA-Z0-9-_]/g, '_');
+                    const nodeEl = document.getElementById(`node-el-${sanitizedNodeId}`);
+
                     if (!nodeEl) {
-                        console.warn(`Node element 'node-${nodeInfo.id}' not found in DOM.`);
+                        // console.warn(`Node element for ID '${nodeInfo.id}' (sanitized: node-el-${sanitizedNodeId}) not found for status update.`);
                         return;
                     }
-                    nodeEl.classList.remove('success-node', 'error-node'); // Reset classes
+                    nodeEl.classList.remove('success-node', 'error-node'); 
 
-                    const statusData = graphData[nodeInfo.statusKey];
-
-                    if (nodeInfo.type === 'input') { // 'input' is a type of stageInfo, not nodeInfo here
-                         if (graphData.hasOwnProperty(nodeInfo.statusKey) && graphData[nodeInfo.statusKey]) {
-                            nodeEl.classList.add('success-node');
-                        } else {
-                            nodeEl.classList.add('error-node');
-                        }
-                    } else if (statusData) {
-                        if (nodeInfo.statusKey === 'db_save_status') { // Special handling for db_save_status
-                            if (statusData.success) nodeEl.classList.add('success-node');
-                            else nodeEl.classList.add('error-node');
-                        } else if (statusData.error) { // Standard error check for other nodes
-                            nodeEl.classList.add('error-node');
-                        } else {
+                    // Determine the primary data object for this node from graphData
+                    // This could be the direct output (statusKey) or details object (detailsKey or conventional xxx_details)
+                    let primaryDataForNode = graphData[nodeInfo.statusKey];
+                    if (primaryDataForNode === undefined && nodeInfo.detailsKey) {
+                        primaryDataForNode = graphData[nodeInfo.detailsKey];
+                    }
+                    // For reverter nodes, their details object also indicates status
+                    if (reverterNodeDetailsKeys[nodeInfo.id] && graphData[reverterNodeDetailsKeys[nodeInfo.id]]) {
+                        primaryDataForNode = graphData[reverterNodeDetailsKeys[nodeInfo.id]];
+                    }
+                    
+                    if (nodeInfo.id === "input_display") { // Our pseudo input node
+                         if (graphData.input_headline) {
                             nodeEl.classList.add('success-node');
                         }
+                    } else if (primaryDataForNode) {
+                        let hasError = false;
+                        let isSuccess = false;
+
+                        if (typeof primaryDataForNode === 'object' && primaryDataForNode !== null) {
+                            if (primaryDataForNode.error) { // Standard error object check
+                                hasError = true;
+                            } else if (nodeInfo.statusKey === 'db_save_status') { // Special for DB
+                                if (primaryDataForNode.success) isSuccess = true; else hasError = true;
+                            } else if (primaryDataForNode.status && primaryDataForNode.status.toLowerCase().includes('skip')) {
+                                // Consider skipped as neutral or warning, not necessarily full error unless desired
+                                // For now, let's not mark it error unless it also has an .error field
+                            } else {
+                                // Generic success if an object exists and no .error
+                                isSuccess = true; 
+                            }
+                        } else if (typeof primaryDataForNode === 'string') {
+                            // For nodes whose statusKey points directly to a string output (like reverted headlines)
+                            if (primaryDataForNode.startsWith("Error:") || 
+                                primaryDataForNode.startsWith("Not applicable") ||
+                                primaryDataForNode.startsWith("No ") ||
+                                primaryDataForNode.startsWith("Data not available")) {
+                                hasError = true;
+                            } else {
+                                isSuccess = true;
+                            }
+                        }
+                        // Fallback: if primaryDataForNode is defined but not object/string, assume success if not an error.
+                        else if (primaryDataForNode !== undefined && primaryDataForNode !== null) {
+                           isSuccess = true;
+                        }
+
+
+                        if (hasError) nodeEl.classList.add('error-node');
+                        else if (isSuccess) nodeEl.classList.add('success-node');
+
                     } else {
-                        nodeEl.classList.add('error-node'); // Data for status key missing, assume error
+                        // If no primary data at all for status/details key, and not input, it's potentially an issue
+                        // For now, leave neutral unless it's a critical step like 'saver'
+                        if(nodeInfo.id === 'saver' || nodeInfo.id.endsWith('_reverter')){
+                            // console.warn(`No data found for critical node ${nodeInfo.displayName} (key: ${nodeInfo.statusKey || nodeInfo.detailsKey}). Marking as error.`);
+                            // nodeEl.classList.add('error-node'); // Be more aggressive for critical steps
+                        }
                     }
                 };
                 
-                if (stageInfo.type === 'input' || stageInfo.type === 'sequential') {
-                    processNode(stageInfo); // Stage info itself is the node info
-                } else if (stageInfo.type === 'parallel-group') {
+                if (stageInfo.type === 'parallel-group') {
                     stageInfo.subNodes.forEach(subNodeInfo => {
-                        processNode(subNodeInfo);
+                        processNodeStatus(subNodeInfo);
                     });
+                } else { 
+                    processNodeStatus(stageInfo);
                 }
             });
 
-            // Click the first displayable node by default
-            let firstNodeElementId = null;
-            if (structure.nodes.length > 0) {
-                const firstStage = structure.nodes[0];
-                if (firstStage.type === 'input' || firstStage.type === 'sequential') {
-                    firstNodeElementId = `node-${firstStage.id}`;
-                } else if (firstStage.type === 'parallel-group' && firstStage.subNodes && firstStage.subNodes.length > 0) {
-                    firstNodeElementId = `node-${firstStage.subNodes[0].id}`;
-                }
-            }
-            if (firstNodeElementId) {
-                const firstNodeToClick = document.getElementById(firstNodeElementId);
-                if (firstNodeToClick) {
-                    firstNodeToClick.click();
-                }
+            let firstNodeToClick = dynamicGraphFlowContainer.querySelector('.graph-node');
+            if (firstNodeToClick) {
+                firstNodeToClick.click();
             }
         }
-        hideUIMessages(); // Initial hide
+        hideUIMessages();
     </script>
 </body>
 </html>

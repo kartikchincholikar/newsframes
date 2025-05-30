@@ -1,58 +1,98 @@
-// This file defines the AppState structure.
-// It should correspond to the keys defined in graph_config.json's appStateChannels.
-
 /**
  * @typedef {object} AppState
- * @property {string} [input_headline]
- * @property {string} [headline_with_placeholders]
- * @property {object} [properNoun_map]
- * @property {object | {error: string, rawContent?: string}} [properNoun_replacement1_result]
- * @property {object | {error: string, rawContent?: string}} [analysis1_result]
- * @property {object | {error: string, rawContent?: string}} [analysis2_result]
- * @property {object | {error: string, rawContent?: string}} [analysis3_result]
- * @property {object | {error: string, rawContent?: string}} [analysis4_result]
- * @property {object | {error: string, rawContent?: string}} [analysis5_result]
- * @property {object | {error: string, rawContent?: string}} [synthesis_result]
- * @property {string} [flipped_headline_with_placeholders]
- * @property {string} [flipped_headline]
- * @property {object} [properNoun_replacement2_details]
- * @property {{success: boolean, message?: string}} [db_save_status]
- * @property {string} [error_message]
- * // Add any new state keys that new nodes might introduce
+ * @property {string} [input_headline] - The original headline provided by the user.
+ * @property {string} [headlineToAnalyze] - The headline version (original or placeholderized) passed to the analyzer nodes.
+ * @property {string} [headline_with_placeholders] - The headline after initial proper noun replacement (from properNoun_replacer1).
+ * @property {object} [properNoun_map] - Mapping of placeholders to original proper nouns.
+ *
+ * // Raw results from each node/agent
+ * @property {object | {error: string, rawContent?: string}} [properNoun_replacement1_result] - Full result from the initial proper noun replacer.
+ *
+ * // Analysis results from parallel_analyzers_coordinator
+ * @property {object | {error: string, rawContent?: string}} [cognitive_frames_analysis_result]
+ * @property {object | {error: string, rawContent?: string}} [speculative_reframing_result]
+ * @property {object | {error: string, rawContent?: string}} [euphemism_analysis_result]
+ * @property {object | {error: string, rawContent?: string}} [framing_type_analysis_result]
+ * @property {object | {error: string, rawContent?: string}} [violence_type_analysis_result]
+ *
+ * // Reverted headlines from individual analyzers and their reverter details
+ * @property {string} [speculative_reverted_headline] - Final reverted headline from the speculative rephrasing analyzer.
+ * @property {object} [speculative_reverter_details] - Details from the speculative_reverter node.
+ *
+ * @property {string} [framing_type_reverted_headline] - Final reverted headline from the framing type analyzer.
+ * @property {object} [framing_type_reverter_details] - Details from the framing_type_reverter node.
+ *
+ * @property {string} [violence_type_reverted_headline] - Final reverted headline from the violence type analyzer.
+ * @property {object} [violence_type_reverter_details] - Details from the violence_type_reverter node.
+ * 
+ * @property {string} [euphemism_reverted_headline] - Final reverted headline from the violence type analyzer.
+ * @property {object} [euphemism_reverter_details] - Details from the violence_type_reverter node.
+
+ * @property {string} [cognitive_frames_reverted_headline] - Final reverted headline from the violence type analyzer.
+ * @property {object} [cognitive_frames_reverter_details] - Details from the violence_type_reverter node.
+ * // Add more here if other analyzers produce revertable headlines and have their own reverters
+ *
+ * // Synthesis result and its reverted version
+ * @property {object | {error: string, rawContent?: string}} [synthesis_result] - Full result from the main synthesizer node.
+ * @property {string} [main_flipped_headline_with_placeholders] - The primary "flipped" headline from synthesizer (may contain placeholders).
+ * @property {string} [flipped_headline] - The final, reverted main "flipped" headline (after main_headline_reverter).
+ * @property {object} [properNoun_replacement2_details] - Details from the main_headline_reverter node (for the synthesized headline).
+ *
+ * // Save status
+ * @property {{success: boolean, message?: string, headline_id?: string, saved_item_keys?: string[]}} [db_save_status] - Status of the save operation to DynamoDB.
+ *
+ * // Error accumulation
+ * @property {string[]} [error_messages] - Accumulates error messages from various nodes during graph execution.
  */
 
-// Helper to parse channel functions from string (EVAL IS DANGEROUS - USE WITH CAUTION)
-// In a production system, you'd want a safer way if these come from untrusted sources.
-// Since graph_config.json is edited by your trusted UI, it's less of a risk here.
-function parseChannelFunction(fnString) {
-    if (typeof fnString !== 'string') return fnString; // Already a function
-    try {
-        // Sanitize slightly: allow only simple function definitions
-        if (!fnString.match(/^(\(.*?\)|[\w_]+)\s*=>\s*.*$/) && !fnString.match(/^function\s*\(.*?\)\s*\{.*\}$/)) {
-            console.warn("Potentially unsafe function string in appStateChannels:", fnString);
-            // Fallback to a simple y => y or similar if concerned
-            return (x,y) => y;
-        }
-        return eval(fnString);
-    } catch (e) {
-        console.error("Error parsing channel function string:", fnString, e);
-        return (x, y) => y; // Default reducer
-    }
-}
+// These channels define how state keys are updated in the LangGraph StateGraph.
+// (x, y) => y means the new value (y) overwrites the old one (x).
+// default: () => undefined means the key will be undefined if not set.
+const appStateChannels = {
+    input_headline: { value: (x, y) => y, default: () => undefined },
+    headlineToAnalyze: { value: (x, y) => y, default: () => undefined },
+    headline_with_placeholders: { value: (x, y) => y, default: () => undefined },
+    properNoun_map: { value: (x, y) => y, default: () => ({}) },
 
-function getAppStateChannels(configChannels) {
-    const channels = {};
-    for (const key in configChannels) {
-        channels[key] = {
-            value: parseChannelFunction(configChannels[key].value),
-            default: configChannels[key].default ? parseChannelFunction(configChannels[key].default) : undefined
-        };
-    }
-    return channels;
-}
+    // Raw node results
+    properNoun_replacement1_result: { value: (x, y) => y, default: () => undefined },
+    cognitive_frames_analysis_result: { value: (x, y) => y, default: () => undefined },
+    speculative_reframing_result: { value: (x, y) => y, default: () => undefined },
+    euphemism_analysis_result: { value: (x, y) => y, default: () => undefined },
+    framing_type_analysis_result: { value: (x, y) => y, default: () => undefined },
+    violence_type_analysis_result: { value: (x, y) => y, default: () => undefined },
+    synthesis_result: { value: (x, y) => y, default: () => undefined },
 
+    // Placeholderized headline from synthesizer
+    main_flipped_headline_with_placeholders: { value: (x, y) => y, default: () => undefined },
+
+    // Final reverted headlines
+    flipped_headline: { value: (x, y) => y, default: () => undefined }, // Main one from synthesizer path
+    speculative_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    framing_type_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    violence_type_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    cognitive_frames_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    euphemism_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    // Add more channels for other reverted analyzer headlines if needed
+
+    // Details from reverter nodes
+    properNoun_replacement2_details: { value: (x, y) => y, default: () => undefined }, // For main_headline_reverter
+    speculative_reverter_details: { value: (x, y) => y, default: () => undefined },
+    framing_type_reverter_details: { value: (x, y) => y, default: () => undefined },
+    violence_type_reverter_details: { value: (x, y) => y, default: () => undefined },
+    cognitive_frames_reverter_details: { value: (x, y) => y, default: () => undefined },
+    euphemism_reverter_details: { value: (x, y) => y, default: () => undefined },
+    // Add more channels for other reverter details if needed
+
+    // DB status and errors
+    db_save_status: { value: (x, y) => y, default: () => undefined },
+    error_messages: { value: (x, y) => (x || []).concat(y), default: () => [] }, // Append new errors
+
+    data_package_for_saver: { value: (x, y) => y, default: () => undefined }, // New
+    db_save_status: { value: (x, y) => y, default: () => undefined },
+};
 
 module.exports = {
-    getAppStateChannels
-    // AppState typedef is for JSDoc, not directly used by LangGraph runtime here
+  // AppState typedef is for JSDoc/documentation purposes.
+  appStateChannels,
 };

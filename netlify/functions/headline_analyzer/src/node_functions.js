@@ -1,139 +1,302 @@
-const { callModel } = require('./llm_utils');
+// src/node_functions.js
+const { callModel, buildMessagesFromPromptConfig } = require('./llm_utils');
 const { saveHeadlineData } = require('./aws_utils');
+const { resolvePath } = require('./utils/objectPathUtils'); // Make sure this path is correct
 
-// Generic LLM Node
-async function llmNode(state, graphConfig, nodeConfig) {
-    console.log(`--- Running LLM Node: ${nodeConfig.id} ---`);
-    const promptDefinition = graphConfig.prompts[nodeConfig.promptId];
-    if (!promptDefinition) {
-        console.error(`Prompt definition not found for ID: ${nodeConfig.promptId}`);
-        return { error_message: `Configuration error: Prompt ${nodeConfig.promptId} not found.` };
+// ... (interpolateTemplate can be removed if renderTemplate from llm_utils is used consistently)
+// ... (resolvePath can be imported from a utils file)
+
+// --- Generic LLM Node Function ---
+async function executeLlmAgentNode(state, nodeConfig) {
+    console.log(`--- Running LLM Agent Node: ${nodeConfig.displayName} (ID: ${nodeConfig.id}) ---`);
+    const { promptConfig } = nodeConfig;
+
+    if (!promptConfig) {
+        const errorMsg = `Configuration error: Prompt config missing for LLM node ${nodeConfig.id}.`;
+        console.error(errorMsg);
+        return { [nodeConfig.stateOutputKey || `${nodeConfig.id}_error`]: { error: errorMsg } };
     }
 
-    const result = await callModel(promptDefinition, state, graphConfig);
-    const update = {};
+    // Prepare data for template interpolation (passed to buildMessagesFromPromptConfig -> renderTemplate)
+    const templateArgs = { ...state }; // Start with full state
+    if (nodeConfig.stateInputArgs) {
+        for (const [argName, stateKey] of Object.entries(nodeConfig.stateInputArgs)) {
+            templateArgs[argName] = resolvePath(state, stateKey); // Use resolvePath for safety
+        }
+    }
+     // Special case for synthesizer or any node needing 'headlineToAnalyze'
+    if (nodeConfig.stateInputArgs && nodeConfig.stateInputArgs.headlineToSynthesize === 'headlineToAnalyze') {
+        templateArgs.headlineToSynthesize = state.headlineToAnalyze || state.input_headline || "";
+    }
 
-    if (result && !result.error) {
-        // Map LLM output to state keys based on promptDefinition.output_mapping
-        for (const stateKey in promptDefinition.output_mapping) {
-            const sourceKey = promptDefinition.output_mapping[stateKey];
-            if (sourceKey === ".") { // Map the whole result object
-                update[stateKey] = result;
-            } else if (result.hasOwnProperty(sourceKey)) {
-                update[stateKey] = result[sourceKey];
-            } else {
-                console.warn(`LLM Node ${nodeConfig.id}: Expected key "${sourceKey}" not found in LLM response for state key "${stateKey}".`);
-                // Optionally set a default or error indicator
+
+    // 1. Build messages using promptConfig and current state/args
+    const messages = buildMessagesFromPromptConfig(promptConfig, state, templateArgs);
+    // console.log(`[NODE_FUNCTIONS] Built messages for ${nodeConfig.id}:`, JSON.stringify(messages, null, 2));
+
+
+    // 2. Call the model with these messages
+    // Extract model name and generation args from promptConfig if they exist
+    const modelName = promptConfig.model || 'gemini-1.5-flash-latest';
+    const generationArgs = {
+        temperature: promptConfig.temperature || 0.3,
+        maxOutputTokens: promptConfig.maxOutputTokens || 2048
+    };
+    const llmResult = await callModel(messages, modelName, generationArgs);
+
+    const update = {};
+    if (nodeConfig.stateOutputKey) {
+        update[nodeConfig.stateOutputKey] = llmResult;
+    } else {
+        console.warn(`LLM Node ${nodeConfig.id}: No stateOutputKey defined. LLM result might not be stored correctly.`);
+        // Avoid directly merging an error object into state without a key
+        if (llmResult && !llmResult.error) Object.assign(update, llmResult);
+        else update[`${nodeConfig.id}_error`] = llmResult || { error: "LLM call failed or returned no result." };
+    }
+
+    if (llmResult && !llmResult.error) {
+        if (nodeConfig.derivedStateOutputs) {
+            for (const [derivedKey, V_config] of Object.entries(nodeConfig.derivedStateOutputs)) {
+                let value = resolvePath(llmResult, V_config.path); // Use resolvePath from llm_utils
+                if (value !== undefined) {
+                    update[derivedKey] = value;
+                } else if (V_config.fallbackKey && state[V_config.fallbackKey] !== undefined) {
+                    update[derivedKey] = state[V_config.fallbackKey];
+                } else if (V_config.fallbackValue !== undefined) {
+                    update[derivedKey] = V_config.fallbackValue;
+                } else {
+                    update[derivedKey] = undefined;
+                }
             }
         }
     } else {
-        console.warn(`LLM Node ${nodeConfig.id} (Prompt: ${nodeConfig.promptId}) failed or returned invalid data.`, result?.error);
-        update[promptDefinition.output_mapping?.error_key || `${nodeConfig.id}_error`] = result || { error: `${nodeConfig.id}: Invalid output or call failure`, rawContent: JSON.stringify(result) };
-        // Apply fallback values if defined in nodeConfig
-        if (nodeConfig.fallbackValue) {
-            for (const key in nodeConfig.fallbackValue) {
-                // Simple templating for fallback values
-                let value = nodeConfig.fallbackValue[key];
-                if (typeof value === 'string') {
-                    value = value.replace(/{{(.*?)}}/g, (match, stateKey) => state[stateKey.trim()] || '');
+        console.warn(`LLM Node ${nodeConfig.id} failed or returned error: ${llmResult?.error}`);
+        // Error already stored in stateOutputKey. Apply fallbacks for derived outputs.
+        if (nodeConfig.derivedStateOutputs) {
+            for (const [derivedKey, V_config] of Object.entries(nodeConfig.derivedStateOutputs)) {
+                // Apply fallbacks as before
+                if (V_config.fallbackKey && state[V_config.fallbackKey] !== undefined) {
+                    update[derivedKey] = state[V_config.fallbackKey];
+                } else if (V_config.fallbackValue !== undefined) {
+                    update[derivedKey] = V_config.fallbackValue;
+                } else {
+                    update[derivedKey] = undefined;
                 }
-                update[key] = value;
             }
         }
     }
-    // console.log(`LLM Node ${nodeConfig.id} update:`, update);
     return update;
 }
 
-// Specific custom JS nodes (can be generalized further if many share patterns)
-async function properNounReplacer2Node(state, graphConfig, nodeConfig) {
-    console.log("--- Running properNoun Replacer 2 Node ---");
-    let textToProcess = state.flipped_headline_with_placeholders;
-    const properNounMap = state.properNoun_map || {};
+// --- Custom JavaScript Node Functions ---
+// revertMainSynthesizedHeadline, revertGenericAnalyzerHeadline, saveAllToDynamoDBNode
+// These should largely remain the same as in the previous version, but ensure they use
+// resolvePath if accessing nested state properties via stateInputArgs.
+
+async function revertMainSynthesizedHeadline(state, nodeConfig) {
+    console.log(`--- Running Node: ${nodeConfig.displayName} (ID: ${nodeConfig.id}) ---`);
+    const textToProcessKey = nodeConfig.stateInputArgs.text_with_placeholders;
+    const properNounMapKey = nodeConfig.stateInputArgs.properNoun_map;
+
+    const textToProcess = resolvePath(state, textToProcessKey); // Use resolvePath for safety
+    const properNounMap = resolvePath(state, properNounMapKey, {}); // Default to empty object
+    const update = {};
+
+    const finalHeadlineOutputKey = "flipped_headline";
+    const detailsOutputKey = "properNoun_replacement2_details";
+
+    update[detailsOutputKey] = { /* ... initial details ... */ };
+    update[finalHeadlineOutputKey] = textToProcess || `Error: Missing text for ${nodeConfig.displayName}`;
+
+    // ... rest of the logic from previous version ...
+    if (!textToProcess || typeof textToProcess !== 'string') {
+        // console.warn(`${nodeConfig.id}: No valid text to process from state key '${textToProcessKey}'.`);
+        update[detailsOutputKey].status = "Skipped - no input text";
+        return update;
+    }
+    // ... (proper noun map check & replacement logic)
+    let processedText = textToProcess;
     const replacementsMade = {};
+    if (Object.keys(properNounMap).length > 0) {
+        for (const placeholder in properNounMap) {
+            if (properNounMap.hasOwnProperty(placeholder)) {
+                const originalProperNoun = properNounMap[placeholder];
+                const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escapedPlaceholder, 'g');
+                if (processedText.includes(placeholder)) {
+                    processedText = processedText.replace(regex, originalProperNoun);
+                    replacementsMade[placeholder] = originalProperNoun;
+                }
+            }
+        }
+    } else {
+        // console.log(`${nodeConfig.id}: No properNoun map. Text remains as is.`);
+    }
+    
+    update[finalHeadlineOutputKey] = processedText;
+    update[detailsOutputKey] = {
+        status: Object.keys(properNounMap).length > 0 ? "Completed" : "Skipped - no properNoun map",
+        original_text_with_placeholders: textToProcess,
+        final_text: processedText,
+        replacements_made: replacementsMade,
+        properNoun_map_used: properNounMap
+    };
+    return update;
+}
+
+async function revertGenericAnalyzerHeadline(state, nodeConfig) {
+    console.log(`--- Running Node: ${nodeConfig.displayName} (ID: ${nodeConfig.id}) ---`);
+    const update = {};
+
+    const analyzerResultObjectKey = nodeConfig.stateInputArgs.analyzer_result_object;
+    const properNounMapKey = nodeConfig.stateInputArgs.properNoun_map;
+    const analyzerHeadlineKeyPath = nodeConfig.stateInputArgs.analyzer_headline_key_path || 'analyzer_alternative_headline_with_placeholders';
+
+    const analyzerResultObject = resolvePath(state, analyzerResultObjectKey);
+    const properNounMap = resolvePath(state, properNounMapKey, {});
+    
+    const outputStateKey = nodeConfig.stateOutputKey;
+    const detailsStateKey = `${nodeConfig.id}_details`;
+
+    update[detailsStateKey] = { /* ... initial details ... */ };
+    update[outputStateKey] = `Error: Initial conditions not met for ${nodeConfig.displayName}`;
+
+    // ... rest of the logic from previous version, using resolvePath for safety ...
+    if (!analyzerResultObject || typeof analyzerResultObject !== 'object' || analyzerResultObject.error) {
+        update[detailsStateKey].status = `Skipped - Analyzer data missing/errored: ${analyzerResultObject?.error || 'Not found'}`;
+        return update;
+    }
+
+    const textToProcess = resolvePath(analyzerResultObject, analyzerHeadlineKeyPath);
+    update[detailsStateKey].text_found_for_reversion = textToProcess;
 
     if (!textToProcess || typeof textToProcess !== 'string') {
-        console.warn("properNoun Replacer 2: No valid text to process from synthesis.");
-        return {
-            flipped_headline: state.flipped_headline_with_placeholders || "Error: Missing text for properNoun reversion",
-            properNoun_replacement2_details: {
-                status: "Skipped - no input text",
-                original_text_with_placeholders: textToProcess,
-                final_text: textToProcess,
-                replacements_made: {}
-            }
-        };
+        update[detailsStateKey].status = `Skipped - no text at path '${analyzerHeadlineKeyPath}' or not a string`;
+        update[outputStateKey] = "Not applicable or no text generated by analyzer";
+        update[detailsStateKey].final_reverted_text = textToProcess;
+        return update;
     }
-    if (Object.keys(properNounMap).length === 0) {
-        console.log("properNoun Replacer 2: No properNoun map provided, returning text as is.");
-        return {
-            flipped_headline: textToProcess,
-            properNoun_replacement2_details: {
-                status: "Skipped - no properNoun map",
-                original_text_with_placeholders: textToProcess,
-                final_text: textToProcess,
-                replacements_made: {}
+    // ... (proper noun map check & replacement logic as in revertMainSynthesizedHeadline) ...
+    let processedText = textToProcess;
+    const replacementsMade = {};
+    if (Object.keys(properNounMap).length > 0) {
+       for (const placeholder in properNounMap) {
+            if (properNounMap.hasOwnProperty(placeholder)) {
+                const originalProperNoun = properNounMap[placeholder];
+                const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escapedPlaceholder, 'g');
+                if (processedText.includes(placeholder)) {
+                    processedText = processedText.replace(regex, originalProperNoun);
+                    replacementsMade[placeholder] = originalProperNoun;
+                }
             }
-        };
+        }
+    }
+    
+    update[outputStateKey] = processedText;
+    update[detailsStateKey] = {
+        status: Object.keys(properNounMap).length > 0 ? "Completed" : "Skipped - no properNoun map, text used as is",
+        original_analyzer_result: analyzerResultObject,
+        text_with_placeholders_path: analyzerHeadlineKeyPath,
+        text_found_for_reversion: textToProcess,
+        final_reverted_text: processedText,
+        replacements_made: replacementsMade,
+        properNoun_map_used: properNounMap
+    };
+    return update;
+}
+
+
+async function collectAndVerifyDataForSaver(state, nodeConfig) {
+    console.log(`--- Running Node: ${nodeConfig.displayName} (ID: ${nodeConfig.id}) ---`);
+    const dataPackage = {};
+    let allPrerequisitesMet = true;
+    let missingKeys = [];
+
+    console.log(`[${nodeConfig.id}] Available state keys:`, JSON.stringify(Object.keys(state)));
+
+    if (nodeConfig.stateInputArgs) {
+        for (const [packageKey, stateKeyOrPath] of Object.entries(nodeConfig.stateInputArgs)) {
+            const value = resolvePath(state, stateKeyOrPath);
+            if (value === undefined) {
+                console.warn(`[${nodeConfig.id}] Prerequisite state key/path '${stateKeyOrPath}' for package key '${packageKey}' is undefined.`);
+                // Storing a specific marker for truly missing data
+                dataPackage[packageKey] = "__MISSING_PREREQUISITE__"; 
+                allPrerequisitesMet = false; // Optional: could decide to not proceed to saver
+                missingKeys.push(stateKeyOrPath);
+            } else {
+                dataPackage[packageKey] = value;
+            }
+            // console.log(`[${nodeConfig.id}] Packaging: '${packageKey}' =`, dataPackage[packageKey]);
+        }
+    } else {
+        console.error(`[${nodeConfig.id}] Error: No stateInputArgs configured for data collector.`);
+        // Return an error structure or an empty package
+        return { 
+            [nodeConfig.stateOutputKey]: { error: "Collector not configured" },
+            error_messages: ["Data collector node not configured with inputs."]
+         };
     }
 
-    let processedText = textToProcess;
-    for (const placeholder in properNounMap) {
-        if (properNounMap.hasOwnProperty(placeholder)) {
-            const originalProperNoun = properNounMap[placeholder];
-            const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(escapedPlaceholder, 'g');
-            if (processedText.includes(placeholder)) {
-                processedText = processedText.replace(regex, originalProperNoun);
-                replacementsMade[placeholder] = originalProperNoun;
-            }
-        }
+    if (!allPrerequisitesMet) {
+        console.warn(`[${nodeConfig.id}] Not all prerequisite data available for saver. Missing: ${missingKeys.join(', ')}. Package:`, dataPackage);
+        // Decide: either proceed and let saver handle missing data (as it does now by saving "Data not available"),
+        // or you could introduce an error state here to halt before saving.
+        // For now, we'll pass the package as is; aws_utils will handle undefined/missing.
+    } else {
+        console.log(`[${nodeConfig.id}] All prerequisite data collected successfully for saver. Package:`, dataPackage);
     }
-    console.log("properNoun Replacer 2: Replacements made:", replacementsMade);
+    
     return {
-        flipped_headline: processedText,
-        properNoun_replacement2_details: {
-            status: "Completed",
-            original_text_with_placeholders: textToProcess,
-            final_text: processedText,
-            replacements_made: replacementsMade,
-            properNoun_map_used: properNounMap
-        }
+        [nodeConfig.stateOutputKey]: dataPackage // This sets state.data_package_for_saver
     };
 }
 
-async function saveToDynamoDBNode(state, graphConfig, nodeConfig) {
-    console.log("--- Running Save to DynamoDB Node ---");
-    const { input_headline, flipped_headline } = state;
+async function saveAllToDynamoDBNode(state, nodeConfig) {
+    console.log(`--- Running Node: ${nodeConfig.displayName} (ID: ${nodeConfig.id}) ---`);
+    
+    // The data to save now comes from a single state key, which is an object (the package)
+    const packagedDataKey = nodeConfig.stateInputArgs.packaged_data; // e.g., "data_package_for_saver"
+    const dataToPassToAwsUtils = resolvePath(state, packagedDataKey);
 
-    if (!input_headline || typeof flipped_headline !== 'string') {
-        console.warn("Missing input_headline or valid flipped_headline for DB save. Skipping.");
-        return { db_save_status: { success: false, message: "Missing data or invalid flipped_headline for DB save" } };
+    console.log(`[${nodeConfig.id}] Received packaged data from state key '${packagedDataKey}':`, JSON.stringify(dataToPassToAwsUtils, null, 2));
+
+    if (!dataToPassToAwsUtils || typeof dataToPassToAwsUtils !== 'object') {
+        console.error(`[${nodeConfig.id}] Error: Packaged data for saver not found or not an object in state.'${packagedDataKey}'.`);
+        return { [nodeConfig.stateOutputKey || 'db_save_status']: { success: false, message: "Internal error: Data package for saver missing." } };
     }
-    const cleanFlippedHeadline = flipped_headline.startsWith("Alternative perspective unavailable") ?
-        "Alternative perspective unavailable" : flipped_headline;
 
-    const status = await saveHeadlineData({
-        input_headline,
-        flipped_headline: cleanFlippedHeadline
-    });
-    return { db_save_status: status };
+    // The keys within dataToPassToAwsUtils should now directly correspond to what aws_utils.js expects
+    // e.g., dataToPassToAwsUtils.input_headline, dataToPassToAwsUtils.main_flipped_headline_from_state etc.
+    // which were set by the data_collector_for_saver node.
+
+    if (!dataToPassToAwsUtils.input_headline_for_saver && !dataToPassToAwsUtils.input_headline) { // Check both potential keys
+        console.error(`[${nodeConfig.id}] Error: 'input_headline' is missing from the packaged data for DynamoDB.`);
+        return { [nodeConfig.stateOutputKey || 'db_save_status']: { success: false, message: "Critical error: input_headline not found in data package for DB save." } };
+    }
+    
+    // Rename key if necessary before passing to aws_utils
+    const finalDataForAws = {...dataToPassToAwsUtils};
+    if (finalDataForAws.input_headline_for_saver) {
+        finalDataForAws.input_headline = finalDataForAws.input_headline_for_saver;
+        delete finalDataForAws.input_headline_for_saver;
+    }
+
+
+    const status = await saveHeadlineData(finalDataForAws); // saveHeadlineData is from aws_utils.js
+    console.log(`[${nodeConfig.id}] Result from saveHeadlineData:`, JSON.stringify(status, null, 2));
+    
+    return { [nodeConfig.stateOutputKey || 'db_save_status']: status };
 }
 
-// Node for running multiple analyzers in parallel
-// This is a conceptual node; LangGraph handles parallelism if branches are defined from a single node.
-// However, for grouping results, we might want an explicit parallel invoker.
-// For now, graph_builder.js will handle setting up parallel branches.
-// This function might be used if we had a specific aggregation step *after* parallel execution
-// but before the next main step. The current LangGraph setup does this implicitly.
-// The `parallel_analyzers` node in graph_config.json will be handled by graph_builder.js.
-
 const customNodeFunctions = {
-    properNounReplacer2: properNounReplacer2Node,
-    saveToDynamoDBNode: saveToDynamoDBNode,
+    revertProperNouns: revertMainSynthesizedHeadline,
+    revertGenericAnalyzerHeadline: revertGenericAnalyzerHeadline,
+    collectAndVerifyDataForSaver: collectAndVerifyDataForSaver, // Add new function
+    saveAllToDynamoDB: saveAllToDynamoDBNode,
 };
 
 module.exports = {
-    llmNode,
+    executeLlmAgentNode,
     customNodeFunctions
 };
