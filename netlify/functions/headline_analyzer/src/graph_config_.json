@@ -80,7 +80,7 @@
           "stateOutputKey": "violence_type_analysis_result",
           "promptConfig": {
             "systemMessage": "You are an expert in media news framing. Your job is to analyze news headlines. 1. Detect if they report spectacular violence (sudden, dramatic harm). 2. If spectacular violence IS found: Speculate a plausible underlying systemic/structural cause and rewrite the headline appending this cause in parentheses, retaining placeholders if present. 3. If spectacular violence IS NOT found: Indicate this clearly in the output. Output ONLY valid JSON as specified.",
-            "developerInstructionsTemplate": "Instruction:\n1. Analyze the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if it reports spectacular violence.\n3. If yes, identify a plausible underlying systemic cause and provide a rewritten headline in the `analyzer_alternative_headline_with_placeholders` field, ensuring placeholders like [LOCATION_A] are kept if they were in the input.\n4. If no spectacular violence is detected, the `analyzer_alternative_headline_with_placeholders` field should explicitly state \"No spectacular violence detected for a reframing.\".\n5. Your entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema (if spectacular violence IS FOUND):\n{\n  \"original_headline\": \"{{headlineToAnalyze}}\",\n  \"spectacular_violence_detected\": true,\n  \"identified_systemic_cause\": \"string (The identified systemic cause)\",\n  \"analyzer_alternative_headline_with_placeholders\": \"string (The rewritten headline with cause in parentheses, may contain placeholders)\"\n}\n\nRequired JSON Output Schema (if spectacular violence IS NOT FOUND):\n{\n  \"original_headline\": \"{{headlineToAnalyze}}\",\n  \"spectacular_violence_detected\": false,\n  \"analyzer_alternative_headline_with_placeholders\": \"No spectacular violence detected for reframing.\"\n}\n\nExample (Found):\nInput: \"Gang wars kill 3 in [CITY_B].\"\nOutput:\n{\n  \"original_headline\": \"Gang wars kill 3 in [CITY_B].\",\n  \"spectacular_violence_detected\": true,\n  \"identified_systemic_cause\": \"Systemic poverty and lack of opportunity\",\n  \"analyzer_alternative_headline_with_placeholders\": \"Gang wars kill 3 in [CITY_B] (likely fueled by systemic poverty and lack of opportunity).\"\n}\n\nExample (Not Found):\nInput: \"City council approves new budget for parks.\"\nOutput:\n{\n  \"original_headline\": \"City council approves new budget for parks.\",\n  \"spectacular_violence_detected\": false,\n  \"analyzer_alternative_headline_with_placeholders\": \"No spectacular violence detected for reframing.\"\n}\n\n\n\n",
+            "developerInstructionsTemplate": "Instruction:\n1. Analyze the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if it reports spectacular violence.\n3. If yes, identify a plausible underlying systemic cause and provide a rewritten headline in the `analyzer_alternative_headline_with_placeholders` field, ensuring placeholders like [LOCATION_A] are kept if they were in the input.\n4. If no spectacular violence is detected, the `analyzer_alternative_headline_with_placeholders` field should explicitly state \"No spectacular violence detected for reframing.\".\n5. Your entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema (if spectacular violence IS FOUND):\n{\n  \"original_headline\": \"{{headlineToAnalyze}}\",\n  \"spectacular_violence_detected\": true,\n  \"identified_systemic_cause\": \"string (The identified systemic cause)\",\n  \"analyzer_alternative_headline_with_placeholders\": \"string (The rewritten headline with cause in parentheses, may contain placeholders)\"\n}\n\nRequired JSON Output Schema (if spectacular violence IS NOT FOUND):\n{\n  \"original_headline\": \"{{headlineToAnalyze}}\",\n  \"spectacular_violence_detected\": false,\n  \"analyzer_alternative_headline_with_placeholders\": \"No spectacular violence detected for reframing.\"\n}\n\nExample (Found):\nInput: \"Gang wars kill 3 in [CITY_B].\"\nOutput:\n{\n  \"original_headline\": \"Gang wars kill 3 in [CITY_B].\",\n  \"spectacular_violence_detected\": true,\n  \"identified_systemic_cause\": \"Systemic poverty and lack of opportunity\",\n  \"analyzer_alternative_headline_with_placeholders\": \"Gang wars kill 3 in [CITY_B] (likely fueled by systemic poverty and lack of opportunity).\"\n}\n\nExample (Not Found):\nInput: \"City council approves new budget for parks.\"\nOutput:\n{\n  \"original_headline\": \"City council approves new budget for parks.\",\n  \"spectacular_violence_detected\": false,\n  \"analyzer_alternative_headline_with_placeholders\": \"No spectacular violence detected for reframing.\"\n}",
             "userInputTemplate": "Analyze violence type for headline and suggest systemic link: \"{{headlineToAnalyze}}\""
           }
         }
@@ -182,17 +182,17 @@
       "displayName": "Collect Data for Saver",
       "type": "local_function",
       "functionName": "collectAndVerifyDataForSaver",
-      "stateInputArgs": {
-        "input_headline": "input_headline",
-        "main_flipped_headline_from_state": "flipped_headline",
-        "speculative_reverted_headline": "speculative_reverted_headline",
-        "framing_type_reverted_headline": "framing_type_reverted_headline",
-        "violence_type_reverted_headline": "violence_type_reverted_headline",
-        "cognitive_frames_reverted_headline_to_save": "cognitive_frames_reverted_headline",
-        "euphemism_reverted_headline_to_save": "euphemism_reverted_headline",
-        "raw_cognitive_frames_analysis_result": "cognitive_frames_analysis_result",
-        "raw_euphemism_analysis_result": "euphemism_analysis_result"
-      },
+        "stateInputArgs": { 
+            "input_headline": "input_headline", 
+            "main_flipped_headline_from_state": "flipped_headline", 
+            "speculative_reverted_headline": "speculative_reverted_headline",
+            "framing_type_reverted_headline": "framing_type_reverted_headline",
+            "violence_type_reverted_headline": "violence_type_reverted_headline",
+            "cognitive_frames_reverted_headline_to_save": "cognitive_frames_reverted_headline",
+            "euphemism_reverted_headline_to_save": "euphemism_reverted_headline",
+            "raw_cognitive_frames_analysis_result": "cognitive_frames_analysis_result",
+            "raw_euphemism_analysis_result": "euphemism_analysis_result"
+          },
       "stateOutputKey": "data_package_for_saver"
     },
     {
@@ -207,69 +207,22 @@
     }
   ],
   "graphEdges": [
-    {
-      "source": "properNoun_replacer1",
-      "target": "parallel_analyzers_coordinator"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "cognitive_frames_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "euphemism_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "speculative_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "framing_type_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "violence_type_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "synthesizer"
-    },
-    {
-      "source": "synthesizer",
-      "target": "main_headline_reverter"
-    },
-    {
-      "source": "main_headline_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "cognitive_frames_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "euphemism_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "speculative_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "framing_type_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "violence_type_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "data_collector_for_saver",
-      "target": "saver"
-    },
-    {
-      "source": "saver",
-      "target": "END"
-    }
-  ]
+     { "source": "properNoun_replacer1", "target": "parallel_analyzers_coordinator" },
+     { "source": "parallel_analyzers_coordinator", "target": "cognitive_frames_reverter" },
+     { "source": "parallel_analyzers_coordinator", "target": "euphemism_reverter" },      
+     { "source": "parallel_analyzers_coordinator", "target": "speculative_reverter" },
+     { "source": "parallel_analyzers_coordinator", "target": "framing_type_reverter" },
+     { "source": "parallel_analyzers_coordinator", "target": "violence_type_reverter" },
+     { "source": "parallel_analyzers_coordinator", "target": "synthesizer" },
+     { "source": "synthesizer", "target": "main_headline_reverter" },
+     
+     { "source": "main_headline_reverter", "target": "data_collector_for_saver" },
+     { "source": "cognitive_frames_reverter", "target": "data_collector_for_saver" }, 
+     { "source": "euphemism_reverter", "target": "data_collector_for_saver" },      
+     { "source": "speculative_reverter", "target": "data_collector_for_saver" },
+     { "source": "framing_type_reverter", "target": "data_collector_for_saver" },
+     { "source": "violence_type_reverter", "target": "data_collector_for_saver" },
+     { "source": "data_collector_for_saver", "target": "saver" },
+     { "source": "saver", "target": "END" }
+   ]
 }

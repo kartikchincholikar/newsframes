@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph Analyzer Editor</title>
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+
+    <style>
+        /* ... (Your existing CSS - I'll add a bit for the examples section) ... */
+        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f0f2f5; overflow: hidden; }
+        .top-bar { background-color: #333; color: white; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .top-bar input[type="file"] { display: none; }
+        .top-bar label, .top-bar button { background-color: #555; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px; }
+        .top-bar label:hover, .top-bar button:hover { background-color: #007bff; }
+        .top-bar button#addAnalyzerButton { background-color: #2ecc71; margin-right: 15px; }
+        .top-bar button#addAnalyzerButton:hover { background-color: #27ae60; }
+        .main-content-area { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+        #graph-section { width: 50%; display: flex; flex-direction: column; background-color: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        #cy { width: 100%; flex-grow: 1; border: 1px solid #ccc; border-radius: 8px; }
+        #splitter { width: 10px; background-color: #e0e0e0; cursor: col-resize; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 3px; }
+        #splitter:hover { background-color: #c0c0c0; }
+        #splitter::before { content: '⋮'; font-size: 16px; color: #777; line-height: 0; }
+        #prompt-section { width: 50%; background-color: white; padding: 20px; overflow-y: auto; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        #prompt-section h2, #prompt-section h3, #prompt-section h4 { margin-top: 0; color: #333; }
+        #prompt-section h4 { margin-top: 20px; margin-bottom: 10px; border-top: 1px dashed #eee; padding-top: 15px;}
+        #prompt-section label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; color: #555; }
+        #prompt-section textarea { width: calc(100% - 22px); min-height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 13px; margin-bottom: 10px; box-sizing: border-box; }
+        #prompt-section input[type="text"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; box-sizing: border-box; }
+        .prompt-buttons { margin-top: 20px; display: flex; justify-content: space-between;}
+        .delete-button { background-color: #e74c3c !important; }
+        .delete-button:hover { background-color: #c0392b !important; }
+        .info-text { color: #777; font-size: 0.9em; margin-bottom: 15px; }
+
+        .examples-subsection { margin-top: 20px; border: 1px solid #e0e0e0; padding: 15px; border-radius: 6px; background-color: #f9f9f9;}
+        .example-item { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dotted #ccc; }
+        .example-item:last-child { border-bottom: none; }
+        .example-item label { margin-top: 5px; font-size: 0.95em; }
+        .example-item textarea { min-height: 60px; font-size: 0.9em; }
+        .add-example-button { background-color: #5cb85c; margin-top:10px; }
+        .add-example-button:hover { background-color: #4cae4c; }
+        .remove-example-button { background-color: #d9534f; color:white; border:none; padding: 3px 8px; font-size:0.8em; border-radius:3px; cursor:pointer; margin-left:10px;}
+
+    </style>
+</head>
+<body>
+    <!-- ... (top-bar and main-content-area HTML structure remains the same) ... -->
+    <div class="top-bar">
+        <h2>LangGraph Analyzer Editor</h2>
+        <div>
+            <input type="file" id="fileInput" accept=".json">
+            <label for="fileInput">Load graph_config.json</label>
+            <button id="addAnalyzerButton">Add New Analyzer Task</button> 
+            <button id="backupButton">Backup Current Config</button>
+            <button id="saveButton">Save Updated Config</button>
+        </div>
+    </div>
+
+    <div class="main-content-area">
+        <div id="graph-section">
+            <div id="cy"></div>
+        </div>
+        <div id="splitter"></div>
+        <div id="prompt-section">
+            <h2>Prompt Editor / Node Info</h2>
+            <p class="info-text">Click on an Analyzer Task node to edit its properties.</p>
+            <div id="editor-content">
+                <!-- Form will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ... (Variables, Cytoscape registration, event listeners for top buttons, showDefaultPromptEditorState, splitter logic, file/save/backup handlers - all same as before) ...
+        const fileInput = document.getElementById('fileInput');
+        const saveButton = document.getElementById('saveButton');
+        const backupButton = document.getElementById('backupButton');
+        const addAnalyzerButton = document.getElementById('addAnalyzerButton');
+        
+        const graphSection = document.getElementById('graph-section');
+        const promptSection = document.getElementById('prompt-section');
+        const editorContent = document.getElementById('editor-content');
+        const promptSectionInfoText = promptSection.querySelector('.info-text');
+        const splitter = document.getElementById('splitter');
+
+        let cy; 
+        let currentGraphConfig = null;
+        let selectedAnalyzerTaskId = null; 
+        const ANALYZER_COORDINATOR_ID = "parallel_analyzers_coordinator";
+        const DATA_COLLECTOR_ID = "data_collector_for_saver";
+        const analyzerColors = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462', '#b3de69', '#fccde5', '#d9d9d9', '#bc80bd'];
+        let colorIndex = 0;
+
+        if (typeof dagre !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
+            cytoscape.use(cytoscapeDagre);
+        } else {
+            console.error("Dagre libraries not loaded.");
+            alert("Layout library (Dagre) failed to load. Graph may not display as intended.");
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            showDefaultPromptEditorState();
+            initSplitter();
+        });
+
+        fileInput.addEventListener('change', handleFileLoad);
+        saveButton.addEventListener('click', handleSave);
+        backupButton.addEventListener('click', handleBackup);
+        addAnalyzerButton.addEventListener('click', handleAddAnalyzer);
+
+        function showDefaultPromptEditorState(message = "Click on an Analyzer Task node (colored nodes within the 'Analyzer Group') to edit its properties, or add a new one.") { /* ... same ... */
+            editorContent.innerHTML = ''; 
+            if (promptSectionInfoText) {
+                promptSectionInfoText.style.display = 'block';
+                promptSectionInfoText.textContent = message;
+            }
+            promptSection.querySelector('h2').textContent = "Prompt Editor / Node Info"; 
+            selectedAnalyzerTaskId = null;
+        }
+
+        function initSplitter() { /* ... same as previous working version ... */ 
+            let isDragging = false;
+            let startX, startGraphWidth, startPromptWidth;
+
+            splitter.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                startGraphWidth = graphSection.offsetWidth;
+                startPromptWidth = promptSection.offsetWidth;
+                document.body.style.cursor = 'col-resize'; 
+                document.body.style.userSelect = 'none'; 
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                let newGraphWidth = startGraphWidth + dx;
+                let newPromptWidth = startPromptWidth - dx;
+                const minWidth = 200; 
+
+                const totalAvailableWidth = graphSection.parentElement.offsetWidth - splitter.offsetWidth - (2 * parseFloat(getComputedStyle(graphSection.parentElement).gap || 0));
+
+                if (newGraphWidth < minWidth) {
+                    newGraphWidth = minWidth;
+                    newPromptWidth = totalAvailableWidth - newGraphWidth;
+                }
+                if (newPromptWidth < minWidth) {
+                    newPromptWidth = minWidth;
+                    newGraphWidth = totalAvailableWidth - newPromptWidth;
+                }
+                
+                newGraphWidth = Math.max(minWidth, Math.min(newGraphWidth, totalAvailableWidth - minWidth));
+                newPromptWidth = Math.max(minWidth, Math.min(newPromptWidth, totalAvailableWidth - minWidth));
+                
+                if (newGraphWidth + newPromptWidth > totalAvailableWidth) {
+                     if (e.clientX > startX) { 
+                        newPromptWidth = totalAvailableWidth - newGraphWidth;
+                    } else { 
+                        newGraphWidth = totalAvailableWidth - newPromptWidth;
+                    }
+                }
+                newGraphWidth = Math.max(minWidth, newGraphWidth);
+                newPromptWidth = Math.max(minWidth, newPromptWidth);
+
+
+                graphSection.style.width = `${newGraphWidth}px`;
+                promptSection.style.width = `${newPromptWidth}px`;
+                
+                if (cy) {
+                    cy.resize();
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.style.cursor = 'default';
+                    document.body.style.userSelect = 'auto';
+                    if (cy) {
+                        cy.resize();
+                        cy.layout({ name: 'dagre', rankDir: 'TB', spacingFactor: 1.1, nodeSep: 50, edgeSep: 20, rankSep: 60, fit:true, padding: 30, animate: true, animationDuration: 250 }).run();
+                    }
+                }
+            });
+        }
+
+        function handleFileLoad(event) { /* ... same as previous ... */ 
+             const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        currentGraphConfig = JSON.parse(e.target.result);
+                        console.log("Loaded graph_config.json:", currentGraphConfig);
+                        initializeCytoscape(currentGraphConfig);
+                        showDefaultPromptEditorState(); 
+                    } catch (err) {
+                        alert("Error parsing JSON file: " + err.message);
+                        console.error("Error parsing JSON:", err);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+        function handleBackup() { /* ... same as previous ... */ 
+            if (!currentGraphConfig) {
+                alert("No configuration loaded to backup.");
+                return;
+            }
+            downloadJSON(currentGraphConfig, `graph_config_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        function handleSave() { /* ... same as previous ... */ 
+            if (!currentGraphConfig) {
+                alert("No configuration loaded to save.");
+                return;
+            }
+            if (selectedAnalyzerTaskId) { 
+                savePromptChangesToConfig(selectedAnalyzerTaskId); 
+            }
+            downloadJSON(currentGraphConfig, 'graph_config_updated.json');
+        }
+        function downloadJSON(data, filename) { /* ... same as previous ... */ 
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function initializeCytoscape(config) { /* ... same as previous working version ... */ 
+            const elements = [];
+            const coordinatorNodeDef = config.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
+            colorIndex = 0; 
+
+            config.nodeDefinitions.forEach(nodeDef => {
+                let nodeClass = 'other-node-style'; 
+                if (nodeDef.id === ANALYZER_COORDINATOR_ID) nodeClass = 'coordinator-node-style';
+                else if (nodeDef.id === DATA_COLLECTOR_ID) nodeClass = 'collector-node-style';
+                else if (nodeDef.id.endsWith("_reverter")) nodeClass = 'reverter-node-style';
+
+                elements.push({
+                    data: { id: nodeDef.id, label: nodeDef.displayName, type: nodeDef.type, class: nodeClass },
+                });
+            });
+            
+            if (coordinatorNodeDef && coordinatorNodeDef.analyzerTasks) {
+                coordinatorNodeDef.analyzerTasks.forEach(task => {
+                    const taskColor = analyzerColors[colorIndex % analyzerColors.length];
+                    colorIndex++;
+                    elements.push({
+                        data: { 
+                            id: task.id, 
+                            label: task.displayName, 
+                            parent: ANALYZER_COORDINATOR_ID, 
+                            type: 'analyzer_task', 
+                            class: 'analyzer-task-node-style', 
+                            color: taskColor 
+                        }
+                    });
+                });
+            }
+
+            if (config.graphEdges.some(edge => edge.target === 'END')) {
+                elements.push({
+                    data: { id: 'END', label: 'END', type: 'end_node', class: 'end-node-style' },
+                });
+            }
+
+            config.graphEdges.forEach(edge => {
+                elements.push({
+                    data: { 
+                        id: `${edge.source}_to_${edge.target}`.replace(/[^a-zA-Z0-9-_]/g, '_'),
+                        source: edge.source, 
+                        target: edge.target 
+                    }
+                });
+            });
+
+            if (cy) { cy.destroy(); } 
+
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: elements,
+                style: [ 
+                    { selector: 'node', style: { 'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '10px', 'width': '100px', 'height': '60px', 'shape': 'round-rectangle', 'text-wrap': 'wrap', 'text-max-width': '90px', 'border-width': 1, 'border-color': '#999' } },
+                    { selector: 'edge', style: { 'width': 1.5, 'line-color': '#ccc', 'target-arrow-color': '#ccc', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier' } },
+                    
+                    { selector: '.other-node-style', style: { 'background-color': '#e8e8e8' } },
+                    { selector: '.analyzer-task-node-style', style: { 'background-color': 'data(color)', 'border-color': 'black', 'color': '#333', 'font-weight': 'bold' } }, 
+                    { selector: `node[parent="${ANALYZER_COORDINATOR_ID}"]`, style: { 'font-size': '9px', 'width': '90px', 'height': '50px', 'text-max-width': '80px' } }, 
+                    { selector: '.coordinator-node-style', style: { 'background-color': 'rgba(230, 240, 255, 0.7)', 'shape': 'rectangle', 'border-color': '#a0c0e0', 'border-width': 2, 'label': 'Analyzer Group (Parallel)', 'padding': '25px', 'text-valign': 'top', 'font-weight': 'bold', 'color': '#4682b4', 'min-width': '300px', 'min-height':'150px' } }, 
+                    { selector: '.collector-node-style', style: { 'background-color': '#90ee90' } }, 
+                    { selector: '.reverter-node-style', style: { 'background-color': '#ffcccb' } }, 
+                    { selector: '.end-node-style', style: { 'background-color': '#a9a9a9', 'shape': 'ellipse', 'width': '70px', 'height': '40px', 'label': 'END', 'color':'white', 'font-weight':'bold' } },
+                    
+                    { selector: 'node:selected', style: { 'border-width': 3, 'border-color': '#0056b3', 'background-color': '#cce5ff' } }
+                ],
+                layout: { /* ... same layout ... */ 
+                    name: 'dagre', 
+                    rankDir: 'TB', 
+                    spacingFactor: 1.2, 
+                    nodeSep: 60, 
+                    edgeSep: 30, 
+                    rankSep: 80, 
+                    fit: true,
+                    padding: 30,
+                    animate: true, animationDuration: 300,
+                    klay: { spacing: 40, layoutHierarchy: true }
+                }
+            });
+
+            cy.on('tap', 'node', function(event){
+                const clickedNode = event.target;
+                const nodeId = clickedNode.id();
+                const nodeType = clickedNode.data('type'); 
+
+                cy.nodes().deselect(); 
+                clickedNode.select();  
+
+                if (nodeType === 'analyzer_task') {
+                    selectedAnalyzerTaskId = nodeId;
+                    populatePromptEditor(nodeId); 
+                } else {
+                    selectedAnalyzerTaskId = null; 
+                    const nodeDisplayName = clickedNode.data('label');
+                    let nodeDef = findNodeDefinition(nodeId); 
+                    
+                    promptSection.style.display = 'flex';
+                    if (promptSectionInfoText) promptSectionInfoText.style.display = 'none';
+                    promptSection.querySelector('h2').textContent = "Node Info";
+
+                    let definitionToShow = nodeDef || { id: nodeId, label: nodeDisplayName, type: nodeType || "Unknown", message: "Node data from Cytoscape element." };
+                    
+                    if (nodeId === ANALYZER_COORDINATOR_ID && definitionToShow.analyzerTasks) {
+                        const { analyzerTasks, ...coordinatorWithoutTasks } = definitionToShow; 
+                        definitionToShow = coordinatorWithoutTasks;
+                        editorContent.innerHTML = `
+                            <h3>${nodeDisplayName} (ID: ${nodeId})</h3>
+                            <p><strong>Type:</strong> ${nodeType || 'N/A'}</p>
+                            <p>This is the coordinator for analyzer tasks. Click on the colored child nodes to edit individual analyzer prompts.</p>
+                            <label>Coordinator Node Definition (tasks list omitted for brevity):</label>
+                            <textarea style="min-height:200px;" readonly>${JSON.stringify(definitionToShow, null, 2)}</textarea>
+                        `;
+                    } else {
+                        editorContent.innerHTML = `
+                            <h3>${nodeDisplayName} (ID: ${nodeId})</h3>
+                            <p><strong>Type:</strong> ${nodeType || 'N/A'}</p>
+                            <p>Only analyzer task prompts (colored nodes within 'Analyzer Group') can be edited with the detailed form.</p>
+                            <label>Raw Node Definition:</label>
+                            <textarea style="min-height:200px;" readonly>${JSON.stringify(definitionToShow, null, 2)}</textarea>
+                        `;
+                    }
+                }
+            });
+        }
+
+
+        function findNodeDefinition(nodeId) { /* ... same as previous ... */ 
+            return currentGraphConfig.nodeDefinitions.find(n => n.id === nodeId);
+        }
+        function findAnalyzerTask(taskId) { /* ... same as previous ... */ 
+            const coordinator = currentGraphConfig.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
+            return coordinator ? coordinator.analyzerTasks.find(task => task.id === taskId) : null;
+        }
+
+        // --- FUNCTIONS FOR PARSING AND RECONSTRUCTING EXAMPLES ---
+        const EXAMPLE_BLOCK_REGEX = /^\s*### Examples:\s*([\s\S]*?)(?=\n###|\n\n\w|$)/im;
+        const SINGLE_EXAMPLE_REGEX = /\*\*Example \d+.*?\*\*[\s\S]*?Input:[\s\n]*?"?([\s\S]*?)"?[\s\n]+Output:\s*```json\s*([\s\S]*?)\s*```/gi;
+        const EXAMPLES_HEADER = "### Examples:";
+
+        function parseExamplesFromDevInstructions(devInstructions) {
+            const examples = [];
+            if (typeof devInstructions !== 'string') return examples;
+
+            const examplesBlockMatch = devInstructions.match(EXAMPLE_BLOCK_REGEX);
+            if (examplesBlockMatch && examplesBlockMatch[1]) {
+                const examplesText = examplesBlockMatch[1];
+                let match;
+                while ((match = SINGLE_EXAMPLE_REGEX.exec(examplesText)) !== null) {
+                    try {
+                        const input = match[1].trim();
+                        const outputJson = JSON.parse(match[2].trim());
+                        examples.push({ input, output: outputJson });
+                    } catch (e) {
+                        console.warn("Failed to parse an example JSON block:", e, match[2]);
+                    }
+                }
+            }
+            return examples;
+        }
+
+        function renderExamplesUI(examples, containerElement, taskId) {
+            containerElement.innerHTML = '<h4>Editable Examples:</h4>';
+            if (examples.length === 0) {
+                containerElement.innerHTML += '<p>No examples found or parsed from Developer Instructions.</p>';
+            }
+            examples.forEach((ex, index) => {
+                const exampleDiv = document.createElement('div');
+                exampleDiv.className = 'example-item';
+                exampleDiv.dataset.exampleIndex = index;
+                exampleDiv.innerHTML = `
+                    <label for="ex-input-${index}-${taskId}">Example ${index + 1} Input:</label>
+                    <textarea id="ex-input-${index}-${taskId}">${ex.input}</textarea>
+                    <label for="ex-output-${index}-${taskId}">Example ${index + 1} Output (JSON):</label>
+                    <textarea id="ex-output-${index}-${taskId}" class="example-output-json" style="min-height: 80px;">${JSON.stringify(ex.output, null, 2)}</textarea>
+                    <button type="button" class="remove-example-button" onclick="removeExample(${index}, '${taskId}')">Remove</button>
+                `;
+                containerElement.appendChild(exampleDiv);
+            });
+            const addExampleBtn = document.createElement('button');
+            addExampleBtn.textContent = 'Add Another Example';
+            addExampleBtn.className = 'add-example-button';
+            addExampleBtn.type = 'button';
+            addExampleBtn.onclick = () => addNewExampleUI(containerElement, taskId);
+            containerElement.appendChild(addExampleBtn);
+        }
+        
+        window.removeExample = function(index, taskId) {
+            const examplesContainer = document.getElementById(`examples-subsection-${taskId}`);
+            const exampleItemToRemove = examplesContainer.querySelector(`.example-item[data-example-index="${index}"]`);
+            if(exampleItemToRemove) {
+                exampleItemToRemove.remove();
+                // Re-index remaining examples
+                const remainingItems = examplesContainer.querySelectorAll('.example-item');
+                remainingItems.forEach((item, newIndex) => {
+                    item.dataset.exampleIndex = newIndex;
+                    item.querySelector('label[for^="ex-input"]').textContent = `Example ${newIndex + 1} Input:`;
+                    item.querySelector('label[for^="ex-output"]').textContent = `Example ${newIndex + 1} Output (JSON):`;
+                    item.querySelector('textarea[id^="ex-input"]').id = `ex-input-${newIndex}-${taskId}`;
+                    item.querySelector('textarea[id^="ex-output"]').id = `ex-output-${newIndex}-${taskId}`;
+                    item.querySelector('.remove-example-button').setAttribute('onclick', `removeExample(${newIndex}, '${taskId}')`);
+                });
+            }
+        }
+
+
+        function addNewExampleUI(containerElement, taskId) {
+            const examples = getEditedExamplesFromUI(taskId); // Get current examples from UI
+            const newIndex = examples.length; // Index for the new example
+            const exampleDiv = document.createElement('div');
+            exampleDiv.className = 'example-item';
+            exampleDiv.dataset.exampleIndex = newIndex;
+            exampleDiv.innerHTML = `
+                <label for="ex-input-${newIndex}-${taskId}">Example ${newIndex + 1} Input:</label>
+                <textarea id="ex-input-${newIndex}-${taskId}"></textarea>
+                <label for="ex-output-${newIndex}-${taskId}">Example ${newIndex + 1} Output (JSON):</label>
+                <textarea id="ex-output-${newIndex}-${taskId}" class="example-output-json" style="min-height: 80px;">${JSON.stringify({analyzer_alternative_headline_with_placeholders: "New example placeholder"}, null, 2)}</textarea>
+                <button type="button" class="remove-example-button" onclick="removeExample(${newIndex}, '${taskId}')">Remove</button>
+            `;
+            // Insert before the "Add Another Example" button
+            containerElement.insertBefore(exampleDiv, containerElement.querySelector('.add-example-button'));
+        }
+
+
+        function getEditedExamplesFromUI(taskId) {
+            const editedExamples = [];
+            const exampleItems = document.querySelectorAll(`#examples-subsection-${taskId} .example-item`);
+            exampleItems.forEach((item, index) => {
+                const inputEl = item.querySelector(`#ex-input-${index}-${taskId}`);
+                const outputEl = item.querySelector(`#ex-output-${index}-${taskId}`);
+                if (inputEl && outputEl) {
+                    try {
+                        const outputJson = JSON.parse(outputEl.value);
+                        editedExamples.push({ input: inputEl.value, output: outputJson });
+                    } catch (e) {
+                        alert(`Error parsing JSON for Example ${index + 1}: ${e.message}. This example will not be saved correctly.`);
+                        // Fallback or store as string if needed
+                        editedExamples.push({ input: inputEl.value, output: outputEl.value }); 
+                    }
+                }
+            });
+            return editedExamples;
+        }
+
+        function reconstructDevInstructions(originalDevInstructions, editedExamples) {
+            let textBeforeExamples = originalDevInstructions;
+            let textAfterExamples = "";
+
+            const examplesBlockMatch = originalDevInstructions.match(EXAMPLE_BLOCK_REGEX);
+            if (examplesBlockMatch) {
+                const fullMatch = examplesBlockMatch[0]; // The whole "### Examples: ..." block
+                const startIndex = originalDevInstructions.indexOf(fullMatch);
+                textBeforeExamples = originalDevInstructions.substring(0, startIndex);
+                textAfterExamples = originalDevInstructions.substring(startIndex + fullMatch.length);
+            } else {
+                // No "### Examples:" header found, append new examples section
+                textBeforeExamples = originalDevInstructions.trim() + "\n\n"; 
+            }
+            
+            let examplesString = "";
+            if (editedExamples.length > 0) {
+                examplesString = EXAMPLES_HEADER + "\n\n";
+                editedExamples.forEach((ex, index) => {
+                    examplesString += `**Example ${index + 1}:**\nInput: "${ex.input}"\nOutput:\n\`\`\`json\n${JSON.stringify(ex.output, null, 2)}\n\`\`\`\n\n`;
+                });
+            }
+            
+            return textBeforeExamples.trim() + "\n\n" + examplesString.trim() + "\n\n" + textAfterExamples.trim();
+        }
+
+
+        function populatePromptEditor(taskId) {
+            const task = findAnalyzerTask(taskId);
+            if (!task) {
+                editorContent.innerHTML = "<p>Error: Analyzer task object not found.</p>";
+                return;
+            }
+            selectedAnalyzerTaskId = taskId;
+            if (promptSectionInfoText) promptSectionInfoText.style.display = 'none';
+            promptSection.querySelector('h2').textContent = `Edit Analyzer: ${task.displayName}`;
+
+            const devInstructions = task.promptConfig.developerInstructionsTemplate || '';
+            const parsedExamples = parseExamplesFromDevInstructions(devInstructions);
+            
+            // Extract text before and after examples for the main dev instructions textarea
+            let mainDevInstructionsText = devInstructions;
+            const examplesBlockMatch = devInstructions.match(EXAMPLE_BLOCK_REGEX);
+            if (examplesBlockMatch) {
+                const fullMatch = examplesBlockMatch[0];
+                const startIndex = devInstructions.indexOf(fullMatch);
+                const textBefore = devInstructions.substring(0, startIndex);
+                const textAfter = devInstructions.substring(startIndex + fullMatch.length);
+                mainDevInstructionsText = (textBefore.trim() + "\n\n" + textAfter.trim()).trim();
+            }
+
+
+            editorContent.innerHTML = `
+                <h3>${task.displayName}</h3>
+                <div>
+                    <label for="edit-id-${taskId}">ID (Read-only):</label>
+                    <input type="text" id="edit-id-${taskId}" value="${task.id}" readonly>
+                </div>
+                <div>
+                    <label for="edit-displayName-${taskId}">Display Name:</label>
+                    <input type="text" id="edit-displayName-${taskId}" value="${task.displayName}">
+                </div>
+                <div>
+                    <label for="edit-stateOutputKey-${taskId}">State Output Key:</label>
+                    <input type="text" id="edit-stateOutputKey-${taskId}" value="${task.stateOutputKey || ''}">
+                </div>
+                <hr>
+                <h4>Prompt Configuration:</h4>
+                <div>
+                    <label for="edit-systemMessage-${taskId}">System Message:</label>
+                    <textarea id="edit-systemMessage-${taskId}">${task.promptConfig.systemMessage || ''}</textarea>
+                </div>
+                <div>
+                    <label for="edit-devInstructionsText-${taskId}">Developer Instructions (excluding examples):</label>
+                    <textarea id="edit-devInstructionsText-${taskId}" style="min-height: 150px;">${mainDevInstructionsText}</textarea>
+                </div>
+                
+                <div class="examples-subsection" id="examples-subsection-${taskId}">
+                    <!-- Examples will be rendered here by renderExamplesUI -->
+                </div>
+
+                <div>
+                    <label for="edit-userInput-${taskId}">User Input Template:</label>
+                    <textarea id="edit-userInput-${taskId}">${task.promptConfig.userInputTemplate || ''}</textarea>
+                </div>
+                <div class="prompt-buttons">
+                    <button onclick="savePromptChangesToConfig('${taskId}')">Update Task in Config</button>
+                    <button class="delete-button" onclick="handleDeleteAnalyzer('${taskId}')">Delete This Analyzer Task</button>
+                </div>
+            `;
+            renderExamplesUI(parsedExamples, document.getElementById(`examples-subsection-${taskId}`), taskId);
+         }
+
+        window.savePromptChangesToConfig = function(taskId) {
+            if (!currentGraphConfig || !taskId) return;
+            const coordinatorNodeDef = currentGraphConfig.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
+            if (!coordinatorNodeDef || !coordinatorNodeDef.analyzerTasks) return;
+            const taskIndex = coordinatorNodeDef.analyzerTasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) { alert("Error: Task not found."); return; }
+            
+            const taskToUpdate = coordinatorNodeDef.analyzerTasks[taskIndex];
+
+            taskToUpdate.displayName = document.getElementById(`edit-displayName-${taskId}`).value;
+            taskToUpdate.stateOutputKey = document.getElementById(`edit-stateOutputKey-${taskId}`).value;
+            if (!taskToUpdate.promptConfig) taskToUpdate.promptConfig = {}; 
+            taskToUpdate.promptConfig.systemMessage = document.getElementById(`edit-systemMessage-${taskId}`).value;
+            
+            const devInstructionsTextOnly = document.getElementById(`edit-devInstructionsText-${taskId}`).value;
+            const editedExamples = getEditedExamplesFromUI(taskId);
+            taskToUpdate.promptConfig.developerInstructionsTemplate = reconstructDevInstructions(devInstructionsTextOnly, editedExamples);
+            
+            taskToUpdate.promptConfig.userInputTemplate = document.getElementById(`edit-userInput-${taskId}`).value;
+            
+            alert(`Changes for '${taskToUpdate.displayName}' captured. Click "Save Updated Config" to download.`);
+            
+            const cyNode = cy.getElementById(taskId);
+            if (cyNode && cyNode.length > 0) { 
+                cyNode.data('label', taskToUpdate.displayName); 
+            }
+        };
+        
+        // Default prompt for new analyzers
+        const defaultNewAnalyzerPromptConfig = { /* ... same as before, with examples structure ... */ };
+        defaultNewAnalyzerPromptConfig.systemMessage = "You are an AI assistant. Your task is to analyze the provided headline based on a specific framing perspective and then rewrite it. Output ONLY valid JSON as specified.";
+        defaultNewAnalyzerPromptConfig.developerInstructionsTemplate = `Instruction:
+1. Analyze the input headline: "{{headlineToAnalyze}}".
+2. Identify [SPECIFIC FRAMING ASPECT - e.g., emotional sentiment, implied bias, etc.].
+3. Based on this, rewrite the headline to [SPECIFIC GOAL - e.g., neutralize sentiment, highlight bias, offer counter-narrative]. Retain placeholders.
+4. If no significant [SPECIFIC FRAMING ASPECT] is found or a meaningful rewrite cannot be generated, \`analyzer_alternative_headline_with_placeholders\` should be "No relevant aspect found for this type of reframing.".
+5. Your entire output MUST be a single, valid JSON object.
+
+Required JSON Output Schema:
+{
+  "original_headline": "{{headlineToAnalyze}}",
+  "analysis_summary": "string (Brief summary of your findings regarding [SPECIFIC FRAMING ASPECT])",
+  "analyzer_alternative_headline_with_placeholders": "string (The rewritten headline, or 'No relevant aspect found for this type of reframing.')"
+}
+
+### Examples:
+
+**Example 1:**
+Input: "Default example input for new analyzer."
+Output:
+\`\`\`json
+{
+  "original_headline": "Default example input for new analyzer.",
+  "analysis_summary": "Initial analysis based on [SPECIFIC FRAMING ASPECT].",
+  "analyzer_alternative_headline_with_placeholders": "Rewritten headline based on [SPECIFIC GOAL]."
+}
+\`\`\`
+`;
+        defaultNewAnalyzerPromptConfig.userInputTemplate = "Analyze and reframe this headline based on [YOUR NEW ANALYSIS TYPE]: \"{{headlineToAnalyze}}\"";
+
+
+        function generateNewAnalyzerId(baseName = "new_analyzer_task") { /* ... same as before ... */ 
+            let i = 1;
+            let newId = `${baseName}_${i}`;
+            const coordinator = currentGraphConfig.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
+            if (!coordinator || !coordinator.analyzerTasks) return newId; 
+            
+            const existingTaskIds = new Set(coordinator.analyzerTasks.map(task => task.id));
+            const existingNodeIds = new Set(currentGraphConfig.nodeDefinitions.map(node => node.id));
+
+            while (existingTaskIds.has(newId) || existingNodeIds.has(`${newId}_reverter`)) {
+                i++;
+                newId = `${baseName}_${i}`;
+            }
+            return newId;
+        }
+
+        function handleAddAnalyzer() { /* ... same as before ... */ 
+             if (!currentGraphConfig) {
+                alert("Load a graph_config.json file first.");
+                return;
+            }
+            const coordinator = currentGraphConfig.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
+            if (!coordinator) {
+                alert("Error: parallel_analyzers_coordinator node not found in config.");
+                return;
+            }
+            if (!coordinator.analyzerTasks) {
+                coordinator.analyzerTasks = [];
+            }
+
+            const newIdBase = prompt("Enter a short base name for the new analyzer (e.g., sentiment_analyzer):", "new_task");
+            if (!newIdBase || newIdBase.trim() === "") return;
+            
+            const newAnalyzerId = generateNewAnalyzerId(newIdBase.trim().toLowerCase().replace(/\s+/g, '_'));
+            const newReverterId = `${newAnalyzerId}_reverter`;
+            const newRevertedStateKey = `${newAnalyzerId}_reverted_headline`; 
+
+            const newAnalyzerTask = {
+                id: newAnalyzerId,
+                displayName: `X. ${newIdBase.trim().split(/[\s_]+/).map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ')}`,
+                stateOutputKey: `${newAnalyzerId}_result`, 
+                promptConfig: JSON.parse(JSON.stringify(defaultNewAnalyzerPromptConfig))
+            };
+            coordinator.analyzerTasks.push(newAnalyzerTask);
+
+            const newReverterNode = {
+                id: newReverterId,
+                displayName: `Revert: ${newAnalyzerTask.displayName.startsWith("X. ") ? newAnalyzerTask.displayName.substring(3) : newAnalyzerTask.displayName}`,
+                type: "local_function",
+                functionName: "revertGenericAnalyzerHeadline",
+                stateInputArgs: {
+                    analyzer_result_object: newAnalyzerTask.stateOutputKey,
+                    "properNoun_map": "properNoun_map" 
+                },
+                stateOutputKey: newRevertedStateKey 
+            };
+            currentGraphConfig.nodeDefinitions.push(newReverterNode);
+
+            currentGraphConfig.graphEdges.push({ source: ANALYZER_COORDINATOR_ID, target: newReverterId });
+            currentGraphConfig.graphEdges.push({ source: newReverterId, target: DATA_COLLECTOR_ID });
+
+            const collectorNode = findNodeDefinition(DATA_COLLECTOR_ID);
+            if (collectorNode && collectorNode.stateInputArgs) {
+                collectorNode.stateInputArgs[`${newAnalyzerId}_reverted_headline_to_save`] = newRevertedStateKey; 
+            }
+
+            alert(`Analyzer task '${newAnalyzerTask.displayName}' and its reverter added.`);
+            initializeCytoscape(currentGraphConfig); 
+            
+            const taskNodeInCy = cy.getElementById(newAnalyzerId);
+            if(taskNodeInCy && taskNodeInCy.length > 0) { 
+                taskNodeInCy.trigger('click');
+            } else {
+                console.warn("Could not find newly added task node in Cytoscape to click:", newAnalyzerId);
+            }
+        }
+        
+        window.handleDeleteAnalyzer = function(taskIdToDelete) { /* ... same as before ... */ 
+            if (!currentGraphConfig || !taskIdToDelete) return;
+            if (!confirm(`Are you sure you want to delete analyzer task "${taskIdToDelete}" and its associated reverter and connections?`)) {
+                return;
+            }
+
+            const coordinator = currentGraphConfig.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
+            if (!coordinator || !coordinator.analyzerTasks) return;
+
+            const taskIndex = coordinator.analyzerTasks.findIndex(task => task.id === taskIdToDelete);
+            if (taskIndex === -1) {
+                alert("Task not found for deletion.");
+                return;
+            }
+            
+            const deletedTask = coordinator.analyzerTasks[taskIndex];
+            const reverterIdToDelete = `${taskIdToDelete}_reverter`;
+            const revertedStateKeyFromReverter = `${taskIdToDelete}_reverted_headline`; 
+
+            coordinator.analyzerTasks.splice(taskIndex, 1);
+
+            const reverterNodeIndex = currentGraphConfig.nodeDefinitions.findIndex(n => n.id === reverterIdToDelete);
+            if (reverterNodeIndex !== -1) {
+                currentGraphConfig.nodeDefinitions.splice(reverterNodeIndex, 1);
+            }
+
+            currentGraphConfig.graphEdges = currentGraphConfig.graphEdges.filter(edge => 
+                !(edge.source === ANALYZER_COORDINATOR_ID && edge.target === reverterIdToDelete) &&
+                !(edge.source === reverterIdToDelete && edge.target === DATA_COLLECTOR_ID)
+            );
+            
+            const collectorNode = findNodeDefinition(DATA_COLLECTOR_ID);
+            if (collectorNode && collectorNode.stateInputArgs) {
+                for (const keyInCollector in collectorNode.stateInputArgs) {
+                    if (collectorNode.stateInputArgs[keyInCollector] === revertedStateKeyFromReverter) {
+                        delete collectorNode.stateInputArgs[keyInCollector];
+                        break; 
+                    }
+                }
+            }
+
+            alert(`Analyzer task "${deletedTask.displayName}" and its reverter deleted.`);
+            initializeCytoscape(currentGraphConfig);
+            showDefaultPromptEditorState();
+        };
+
+    </script>
+</body>
+</html>
