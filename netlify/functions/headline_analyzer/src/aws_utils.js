@@ -35,7 +35,6 @@ function getDocClient() {
  * @param {string} [dataToSave.violence_type_reverted_headline] - Reverted headline from violence type analyzer.
  * @param {string} [dataToSave.cognitive_frames_reverted_headline] - Reverted headline from framing type analyzer.
  * @param {string} [dataToSave.euphemism_reverted_headline] - Reverted headline from violence type analyzer.
- * @param {string} [dataToSave.human_flipped_headline=''] - Manually provided flipped headline.
  * @param {object} [dataToSave.raw_analysis_results] - Optional object to store raw results from analyzers.
  *                                                    e.g., { cognitive_frames: ..., speculative_reframing: ... }
  * @returns {Promise<{success: boolean, message?: string, headline_id?: string, saved_item_keys?: string[]}>}
@@ -62,11 +61,8 @@ async function saveHeadlineData(dataToSave) {
         "speculative_reverted_headline": "speculative_reverted_headline_db", // Example: if DB attr name is different
         "framing_type_reverted_headline": "framing_type_reverted_headline_db",
         "violence_type_reverted_headline": "violence_type_reverted_headline_db",
-        "cognitive_frames_reverted_headline_to_save": "cognitive_frames_reverted_db",
-        "euphemism_reverted_headline_to_save": "euphemism_reverted_db",
-        "human_flipped_headline": "human_flipped_headline",
-        "raw_cognitive_frames_analysis_result": "raw_cognitive_frames_data",
-        "raw_euphemism_analysis_result": "raw_euphemism_data"
+        "cognitive_frames_reverted_headline": "cognitive_frames_reverted_db",
+        "euphemism_reverted_headline": "euphemism_reverted_db",
     };
 
     for (const dataKey in dbAttributeMapping) {
@@ -75,8 +71,8 @@ async function saveHeadlineData(dataToSave) {
             const value = dataToSave[dataKey];
             // More generic value handling
             if (value !== undefined && value !== null) {
-            if (typeof value === 'string' && value.trim() === '' && dataKey !== 'human_flipped_headline') {
-                // Skip saving empty strings for most fields, unless it's human_flipped_headline
+            if (typeof value === 'string' && value.trim() === '') {
+
             } else {
                 itemToSave[dbAttribute] = value; // This will save objects as Maps
             }
@@ -84,34 +80,6 @@ async function saveHeadlineData(dataToSave) {
         }
     }
 
-    // Conditionally add fields if they exist and are strings (or objects for raw results)
-    // This prevents adding 'undefined' or 'null' fields to DynamoDB unless intended.
-    // const fieldsToPotentiallySave = [
-    //     'main_flipped_headline',
-    //     'speculative_reverted_headline',
-    //     'framing_type_reverted_headline',
-    //     'violence_type_reverted_headline',
-    //     // Add more keys for other reverted headlines here as they are defined in graph_config.json and state_definition.js
-    //     'human_flipped_headline',
-    // ];
-
-    // Default human_flipped_headline if not provided or empty after checks
-    if (!itemToSave.hasOwnProperty('human_flipped_headline')) {
-        itemToSave.human_flipped_headline = '';
-    }
-
-    // fieldsToPotentiallySave.forEach(key => {
-    //     if (dataToSave.hasOwnProperty(key) && typeof dataToSave[key] === 'string' && dataToSave[key].trim() !== '') {
-    //         itemToSave[key] = dataToSave[key];
-    //     } else if (dataToSave.hasOwnProperty(key) && dataToSave[key] === '') { // Handle explicitly empty string if desired
-    //          itemToSave[key] = ''; // Or you might choose to omit empty strings
-    //     }
-    // });
-    
-    // // Default human_flipped_headline if not provided or empty after checks
-    // if (!itemToSave.hasOwnProperty('human_flipped_headline')) {
-    //     itemToSave.human_flipped_headline = '';
-    // }
 
 
     // Example: Saving raw analysis results if provided

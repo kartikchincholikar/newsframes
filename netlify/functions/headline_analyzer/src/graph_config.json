@@ -104,7 +104,6 @@
       "functionName": "revertGenericAnalyzerHeadline",
       "stateInputArgs": {
         "analyzer_result_object": "framing_type_analysis_result",
-        "analyzer_headline_key_path": "framing_analysis.analyzer_alternative_headline_with_placeholders",
         "properNoun_map": "properNoun_map"
       },
       "stateOutputKey": "framing_type_reverted_headline"
@@ -188,10 +187,8 @@
         "speculative_reverted_headline": "speculative_reverted_headline",
         "framing_type_reverted_headline": "framing_type_reverted_headline",
         "violence_type_reverted_headline": "violence_type_reverted_headline",
-        "cognitive_frames_reverted_headline_to_save": "cognitive_frames_reverted_headline",
-        "euphemism_reverted_headline_to_save": "euphemism_reverted_headline",
-        "raw_cognitive_frames_analysis_result": "cognitive_frames_analysis_result",
-        "raw_euphemism_analysis_result": "euphemism_analysis_result"
+        "cognitive_frames_reverted_headline": "cognitive_frames_reverted_headline",
+        "euphemism_reverted_headline": "euphemism_reverted_headline"
       },
       "stateOutputKey": "data_package_for_saver"
     },
