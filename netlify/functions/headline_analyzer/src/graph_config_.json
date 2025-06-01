@@ -65,12 +65,12 @@
           }
         },
         {
-          "id": "framing_type_analyzer",
+          "id": "episodic_thematic_analyzer",
           "displayName": "1d. Framing Type Analysis (Episodic/Thematic)",
-          "stateOutputKey": "framing_type_analysis_result",
+          "stateOutputKey": "episodic_thematic_analysis_result",
           "promptConfig": {
             "systemMessage": "You are an expert in media framing analysis. Analyze news snippets to identify whether they use episodic or thematic framing and suggest a reframing that might include placeholders. Output ONLY valid JSON as specified.",
-            "developerInstructionsTemplate": "Instruction:\n1. Analyze the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if it uses thematic or episodic framing.\n3. Explain why this framing type applies.\n4. Suggest how the framing could be flipped (e.g., from episodic to thematic or vice versa). If this flipped suggestion contains placeholders from the original input, retain them.\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"input_headline\": \"{{headlineToAnalyze}}\",\n  \"framing_analysis\": {\n    \"identified_framing_type\": \"string ('Episodic' or 'Thematic' or 'Mixed' or 'Unclear')\",\n    \"reasoning\": \"string (Why this framing type applies)\",\n    \"analyzer_alternative_headline_with_placeholders\": \"string (Alternative framing suggestion, may contain placeholders like [PERSON_A])\"\n  }\n}\nExample:\nInput: \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\"\nOutput:\n{\n  \"input_headline\": \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\",\n  \"framing_analysis\": {\n    \"identified_framing_type\": \"Episodic\",\n    \"reasoning\": \"Focuses on a single, emotionally charged case without broader context.\",\n    \"analyzer_alternative_headline_with_placeholders\": \"Widespread malnutrition, exacerbated by drought and aid shortages in places like [CITY_A], continues to claim young lives across the Horn of Africa, highlighting a systemic crisis.\"\n  }\n}",
+            "developerInstructionsTemplate": "Instruction:\n1. Analyze the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if it uses thematic or episodic framing.\n3. Explain why this framing type applies.\n4. Suggest how the framing could be flipped (e.g., from episodic to thematic or vice versa). If this flipped suggestion contains placeholders from the original input, retain them.\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"input_headline\": \"{{headlineToAnalyze}}\",\n  \"framing_analysis\": {\n    \"identified_episodic_thematic\": \"string ('Episodic' or 'Thematic' or 'Mixed' or 'Unclear')\",\n    \"reasoning\": \"string (Why this framing type applies)\",\n    \"analyzer_alternative_headline_with_placeholders\": \"string (Alternative framing suggestion, may contain placeholders like [PERSON_A])\"\n  }\n}\nExample:\nInput: \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\"\nOutput:\n{\n  \"input_headline\": \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\",\n  \"framing_analysis\": {\n    \"identified_episodic_thematic\": \"Episodic\",\n    \"reasoning\": \"Focuses on a single, emotionally charged case without broader context.\",\n    \"analyzer_alternative_headline_with_placeholders\": \"Widespread malnutrition, exacerbated by drought and aid shortages in places like [CITY_A], continues to claim young lives across the Horn of Africa, highlighting a systemic crisis.\"\n  }\n}",
             "userInputTemplate": "Analyze framing type for headline: \"{{headlineToAnalyze}}\""
           }
         },
@@ -98,16 +98,16 @@
       "stateOutputKey": "speculative_reverted_headline"
     },
     {
-      "id": "framing_type_reverter",
+      "id": "episodic_thematic_reverter",
       "displayName": "Revert Framing Type Suggestion",
       "type": "local_function",
       "functionName": "revertGenericAnalyzerHeadline",
       "stateInputArgs": {
-        "analyzer_result_object": "framing_type_analysis_result",
+        "analyzer_result_object": "episodic_thematic_analysis_result",
         "analyzer_headline_key_path": "framing_analysis.analyzer_alternative_headline_with_placeholders",
         "properNoun_map": "properNoun_map"
       },
-      "stateOutputKey": "framing_type_reverted_headline"
+      "stateOutputKey": "episodic_thematic_reverted_headline"
     },
     {
       "id": "violence_type_reverter",
@@ -151,7 +151,7 @@
         "analysis1": "cognitive_frames_analysis_result",
         "analysis2": "speculative_reframing_result",
         "analysis3": "euphemism_analysis_result",
-        "analysis4": "framing_type_analysis_result",
+        "analysis4": "episodic_thematic_analysis_result",
         "analysis5": "violence_type_analysis_result"
       },
       "stateOutputKey": "synthesis_result",
@@ -163,7 +163,7 @@
       },
       "promptConfig": {
         "systemMessage": "You are an expert in Journalism and Media Studies specializing in news framing. Your task is to generate a 'flipped_headline' that conveys the SAME CORE FACTS from the original headline but with an opposite (flipped) news framing, based on the provided analyses. Output ONLY valid JSON as specified.",
-        "developerInstructionsTemplate": "Instruction:\n1. Study the original headline: \"{{headlineToSynthesize}}\".\n2. Review the provided analyses:\n   - Cognitive Frames: {{analysis1}}\n   - Speculative Reframing: {{analysis2}}\n   - Euphemism Analysis: {{analysis3}}\n   - Framing Type (Episodic/Thematic): {{analysis4}}\n   - Violence Type (Spectacular/Systemic): {{analysis5}}\n3. Based on these, choose one or more analyses that provide strong evidence of a particular news frame in the original headline.\n4. Generate a \"flipped_headline\" that reverses or significantly alters this news framing while ATTEMPTING TO PRESERVE THE CORE FACTUAL INFORMATION.\n5. The flipped headline should ideally use the same placeholders if they were present in \"{{headlineToSynthesize}}\".\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"original_headline_processed\": \"{{headlineToSynthesize}}\",\n  \"flipped_headline\": \"string (The new headline with flipped framing, may contain placeholders)\",\n  \"reasoning_for_flip\": \"string (Brief explanation of which analysis inspired the flip and how the frame was altered)\",\n  \"analysis_summary_used\": { \n      \"cognitive_frames_had_error\": {{analysis1.error ? true : false}},\n      \"speculative_reframing_had_error\": {{analysis2.error ? true : false}},\n      \"euphemism_analysis_had_error\": {{analysis3.error ? true : false}},\n      \"framing_type_analysis_had_error\": {{analysis4.error ? true : false}},\n      \"violence_type_analysis_had_error\": {{analysis5.error ? true : false}}\n  }\n}\nExample:\nInput Headline: \"[LEADER_X] announces decisive action against protest.\"\nCognitive Frame Analysis might indicate \"Control/Order\" frame.\nFlipped Headline might be: \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\"\n\nOutput:\n{\n  \"original_headline_processed\": \"[LEADER_X] announces decisive action against protest.\",\n  \"flipped_headline\": \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\",\n  \"reasoning_for_flip\": \"Flipped from a 'Control/Order' frame implied by 'decisive action' to a 'Concern/Rights' frame by focusing on community perspective and 'escalates measures'.\",\n  \"analysis_summary_used\": { \"cognitive_frames_had_error\": false, \"speculative_reframing_had_error\": false, \"euphemism_analysis_had_error\": false, \"framing_type_analysis_had_error\": false, \"violence_type_analysis_had_error\": false }\n}",
+        "developerInstructionsTemplate": "Instruction:\n1. Study the original headline: \"{{headlineToSynthesize}}\".\n2. Review the provided analyses:\n   - Cognitive Frames: {{analysis1}}\n   - Speculative Reframing: {{analysis2}}\n   - Euphemism Analysis: {{analysis3}}\n   - Framing Type (Episodic/Thematic): {{analysis4}}\n   - Violence Type (Spectacular/Systemic): {{analysis5}}\n3. Based on these, choose one or more analyses that provide strong evidence of a particular news frame in the original headline.\n4. Generate a \"flipped_headline\" that reverses or significantly alters this news framing while ATTEMPTING TO PRESERVE THE CORE FACTUAL INFORMATION.\n5. The flipped headline should ideally use the same placeholders if they were present in \"{{headlineToSynthesize}}\".\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"original_headline_processed\": \"{{headlineToSynthesize}}\",\n  \"flipped_headline\": \"string (The new headline with flipped framing, may contain placeholders)\",\n  \"reasoning_for_flip\": \"string (Brief explanation of which analysis inspired the flip and how the frame was altered)\",\n  \"analysis_summary_used\": { \n      \"cognitive_frames_had_error\": {{analysis1.error ? true : false}},\n      \"speculative_reframing_had_error\": {{analysis2.error ? true : false}},\n      \"euphemism_analysis_had_error\": {{analysis3.error ? true : false}},\n      \"episodic_thematic_analysis_had_error\": {{analysis4.error ? true : false}},\n      \"violence_type_analysis_had_error\": {{analysis5.error ? true : false}}\n  }\n}\nExample:\nInput Headline: \"[LEADER_X] announces decisive action against protest.\"\nCognitive Frame Analysis might indicate \"Control/Order\" frame.\nFlipped Headline might be: \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\"\n\nOutput:\n{\n  \"original_headline_processed\": \"[LEADER_X] announces decisive action against protest.\",\n  \"flipped_headline\": \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\",\n  \"reasoning_for_flip\": \"Flipped from a 'Control/Order' frame implied by 'decisive action' to a 'Concern/Rights' frame by focusing on community perspective and 'escalates measures'.\",\n  \"analysis_summary_used\": { \"cognitive_frames_had_error\": false, \"speculative_reframing_had_error\": false, \"euphemism_analysis_had_error\": false, \"episodic_thematic_analysis_had_error\": false, \"violence_type_analysis_had_error\": false }\n}",
         "userInputTemplate": "Synthesize a flipped headline for: \"{{headlineToSynthesize}}\" using the provided analyses."
       }
     },
@@ -186,7 +186,7 @@
             "input_headline": "input_headline", 
             "main_flipped_headline_from_state": "flipped_headline", 
             "speculative_reverted_headline": "speculative_reverted_headline",
-            "framing_type_reverted_headline": "framing_type_reverted_headline",
+            "episodic_thematic_reverted_headline": "episodic_thematic_reverted_headline",
             "violence_type_reverted_headline": "violence_type_reverted_headline",
             "cognitive_frames_reverted_headline_to_save": "cognitive_frames_reverted_headline",
             "euphemism_reverted_headline_to_save": "euphemism_reverted_headline",
@@ -211,7 +211,7 @@
      { "source": "parallel_analyzers_coordinator", "target": "cognitive_frames_reverter" },
      { "source": "parallel_analyzers_coordinator", "target": "euphemism_reverter" },      
      { "source": "parallel_analyzers_coordinator", "target": "speculative_reverter" },
-     { "source": "parallel_analyzers_coordinator", "target": "framing_type_reverter" },
+     { "source": "parallel_analyzers_coordinator", "target": "episodic_thematic_reverter" },
      { "source": "parallel_analyzers_coordinator", "target": "violence_type_reverter" },
      { "source": "parallel_analyzers_coordinator", "target": "synthesizer" },
      { "source": "synthesizer", "target": "main_headline_reverter" },
@@ -220,7 +220,7 @@
      { "source": "cognitive_frames_reverter", "target": "data_collector_for_saver" }, 
      { "source": "euphemism_reverter", "target": "data_collector_for_saver" },      
      { "source": "speculative_reverter", "target": "data_collector_for_saver" },
-     { "source": "framing_type_reverter", "target": "data_collector_for_saver" },
+     { "source": "episodic_thematic_reverter", "target": "data_collector_for_saver" },
      { "source": "violence_type_reverter", "target": "data_collector_for_saver" },
      { "source": "data_collector_for_saver", "target": "saver" },
      { "source": "saver", "target": "END" }

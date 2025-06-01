@@ -49,8 +49,8 @@ async function runAnalysis(headline) {
         if (finalState.speculative_reverted_headline) {
             console.log("Speculative Reverted Headline:", finalState.speculative_reverted_headline);
         }
-        if (finalState.framing_type_reverted_headline) {
-            console.log("Framing Type Reverted Suggestion:", finalState.framing_type_reverted_headline);
+        if (finalState.episodic_thematic_reverted_headline) {
+            console.log("episodic_thematic Reverted Suggestion:", finalState.episodic_thematic_reverted_headline);
         }
         if (finalState.violence_type_reverted_headline) {
             console.log("Violence Type Reverted Headline:", finalState.violence_type_reverted_headline);

@@ -127,12 +127,12 @@ exports.handler = async function(event, context) { // Added context for complete
         
         // Explicitly ensure all reverted headlines and their details are in payload if they exist in finalState
         const revertedHeadlines = [
-            'speculative_reverted_headline', 'framing_type_reverted_headline', 'violence_type_reverted_headline','cognitive_frames_reverted_headline', 'euphemism_reverted_headline',
+            'speculative_reverted_headline', 'episodic_thematic_reverted_headline', 'violence_type_reverted_headline','cognitive_frames_reverted_headline', 'euphemism_reverted_headline',
             // Add more state keys for reverted headlines if you have them
         ];
         const reverterDetails = [
             'properNoun_replacement2_details', // for main reverter
-            'speculative_reverter_details', 'framing_type_reverter_details', 'violence_type_reverter_details', 'cognitive_frames_reverter_details','euphemism_reverter_details',
+            'speculative_reverter_details', 'episodic_thematic_reverter_details', 'violence_type_reverter_details', 'cognitive_frames_reverter_details','euphemism_reverter_details',
              // Add more state keys for reverter details
         ];
 
@@ -148,7 +148,7 @@ exports.handler = async function(event, context) { // Added context for complete
         responsePayload.raw_analysis1 = finalState.cognitive_frames_analysis_result;
         responsePayload.raw_analysis2 = finalState.speculative_reframing_result;
         responsePayload.raw_analysis3 = finalState.euphemism_analysis_result;
-        responsePayload.raw_analysis4 = finalState.framing_type_analysis_result;
+        responsePayload.raw_analysis4 = finalState.episodic_thematic_analysis_result;
         responsePayload.raw_analysis5 = finalState.violence_type_analysis_result;
 
         let overallStatusMessage = "Processing successful";

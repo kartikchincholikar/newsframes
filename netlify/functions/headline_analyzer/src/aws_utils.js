@@ -31,9 +31,9 @@ function getDocClient() {
  * @param {string} dataToSave.input_headline - The original input headline.
  * @param {string} [dataToSave.main_flipped_headline] - The primary flipped headline from the synthesizer.
  * @param {string} [dataToSave.speculative_reverted_headline] - Reverted headline from speculative analyzer.
- * @param {string} [dataToSave.framing_type_reverted_headline] - Reverted headline from framing type analyzer.
+ * @param {string} [dataToSave.episodic_thematic_reverted_headline] - Reverted headline from episodic_thematic analyzer.
  * @param {string} [dataToSave.violence_type_reverted_headline] - Reverted headline from violence type analyzer.
- * @param {string} [dataToSave.cognitive_frames_reverted_headline] - Reverted headline from framing type analyzer.
+ * @param {string} [dataToSave.cognitive_frames_reverted_headline] - Reverted headline from episodic_thematic analyzer.
  * @param {string} [dataToSave.euphemism_reverted_headline] - Reverted headline from violence type analyzer.
  * @param {object} [dataToSave.raw_analysis_results] - Optional object to store raw results from analyzers.
  *                                                    e.g., { cognitive_frames: ..., speculative_reframing: ... }
@@ -59,7 +59,7 @@ async function saveHeadlineData(dataToSave) {
         "input_headline": "input_headline",
         "main_flipped_headline_from_state": "flipped_headline", 
         "speculative_reverted_headline": "speculative_reverted_headline_db", // Example: if DB attr name is different
-        "framing_type_reverted_headline": "framing_type_reverted_headline_db",
+        "episodic_thematic_reverted_headline": "episodic_thematic_reverted_headline_db",
         "violence_type_reverted_headline": "violence_type_reverted_headline_db",
         "cognitive_frames_reverted_headline": "cognitive_frames_reverted_db",
         "euphemism_reverted_headline": "euphemism_reverted_db",

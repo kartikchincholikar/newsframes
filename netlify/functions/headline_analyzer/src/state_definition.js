@@ -12,15 +12,15 @@
  * @property {object | {error: string, rawContent?: string}} [cognitive_frames_analysis_result]
  * @property {object | {error: string, rawContent?: string}} [speculative_reframing_result]
  * @property {object | {error: string, rawContent?: string}} [euphemism_analysis_result]
- * @property {object | {error: string, rawContent?: string}} [framing_type_analysis_result]
+ * @property {object | {error: string, rawContent?: string}} [episodic_thematic_analysis_result]
  * @property {object | {error: string, rawContent?: string}} [violence_type_analysis_result]
  *
  * // Reverted headlines from individual analyzers and their reverter details
  * @property {string} [speculative_reverted_headline] - Final reverted headline from the speculative rephrasing analyzer.
  * @property {object} [speculative_reverter_details] - Details from the speculative_reverter node.
  *
- * @property {string} [framing_type_reverted_headline] - Final reverted headline from the framing type analyzer.
- * @property {object} [framing_type_reverter_details] - Details from the framing_type_reverter node.
+ * @property {string} [episodic_thematic_reverted_headline] - Final reverted headline from the episodic_thematic analyzer.
+ * @property {object} [episodic_thematic_reverter_details] - Details from the episodic_thematic_reverter node.
  *
  * @property {string} [violence_type_reverted_headline] - Final reverted headline from the violence type analyzer.
  * @property {object} [violence_type_reverter_details] - Details from the violence_type_reverter node.
@@ -59,7 +59,7 @@ const appStateChannels = {
     cognitive_frames_analysis_result: { value: (x, y) => y, default: () => undefined },
     speculative_reframing_result: { value: (x, y) => y, default: () => undefined },
     euphemism_analysis_result: { value: (x, y) => y, default: () => undefined },
-    framing_type_analysis_result: { value: (x, y) => y, default: () => undefined },
+    episodic_thematic_analysis_result: { value: (x, y) => y, default: () => undefined },
     violence_type_analysis_result: { value: (x, y) => y, default: () => undefined },
     synthesis_result: { value: (x, y) => y, default: () => undefined },
 
@@ -69,7 +69,7 @@ const appStateChannels = {
     // Final reverted headlines
     flipped_headline: { value: (x, y) => y, default: () => undefined }, // Main one from synthesizer path
     speculative_reverted_headline: { value: (x, y) => y, default: () => undefined },
-    framing_type_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    episodic_thematic_reverted_headline: { value: (x, y) => y, default: () => undefined },
     violence_type_reverted_headline: { value: (x, y) => y, default: () => undefined },
     cognitive_frames_reverted_headline: { value: (x, y) => y, default: () => undefined },
     euphemism_reverted_headline: { value: (x, y) => y, default: () => undefined },
@@ -78,7 +78,7 @@ const appStateChannels = {
     // Details from reverter nodes
     properNoun_replacement2_details: { value: (x, y) => y, default: () => undefined }, // For main_headline_reverter
     speculative_reverter_details: { value: (x, y) => y, default: () => undefined },
-    framing_type_reverter_details: { value: (x, y) => y, default: () => undefined },
+    episodic_thematic_reverter_details: { value: (x, y) => y, default: () => undefined },
     violence_type_reverter_details: { value: (x, y) => y, default: () => undefined },
     cognitive_frames_reverter_details: { value: (x, y) => y, default: () => undefined },
     euphemism_reverter_details: { value: (x, y) => y, default: () => undefined },
