@@ -188,7 +188,7 @@ async function runAnalyzersInParallelNode(state) {
 
     // const messages1 = [
     //   { role: 'system', content: "You are an expert in Journalism and Media Studies. Your job is to study news headlines (which may contain placeholders like [PERSON_A]) to detect news framing and subliminal messaging. Output ONLY valid JSON." },
-    //   { role: 'developer', content: `Instructions: Analyze the provided headline to identify embedded cognitive frames. Required JSON Output Schema: \`\`\`json { "input_text": "...", "frames": [{ "frame_type": "...", "keywords": [], "linguistic_indicators": "...", "agent_patient_analysis": {"agent": "...", "patient": "..."}, "contextual_elements": "...", "summary": "..."}] } \`\`\`` },
+    //   { role: 'developer', content: `Instructions: Analyze the provided headline to identify embedded cognitive frames. Required JSON Output Schema: \`\`\`json { "input_headline": "...", "frames": [{ "frame_type": "...", "keywords": [], "linguistic_indicators": "...", "agent_patient_analysis": {"agent": "...", "patient": "..."}, "contextual_elements": "...", "summary": "..."}] } \`\`\`` },
     //   { role: 'user', content: `Analyze this headline: "${headlineToAnalyze}"` }
     // ];
 
@@ -203,7 +203,7 @@ async function runAnalyzersInParallelNode(state) {
 Required JSON Output Schema:
 \`\`\`json
 {
-  "input_text": "The original headline text",
+  "input_headline": "The original headline text",
   "frames": [
     {
       "frame_type": "string (e.g., Conflict, Responsibility)",
@@ -452,7 +452,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Output Format (JSON) if spectacular violence IS FOUND:
         \`\`\`json
         {
-          "original_headline": "The original headline text",
+          "input_headline": "The original headline text",
           "spectacular_violence_found": true,
           "systemic_cause": "The identified systemic cause",
           "rewritten_headline": "The rewritten headline with cause in parentheses"
@@ -462,7 +462,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Output Format (JSON) if spectacular violence IS NOT FOUND:
         \`\`\`json
         {
-          "original_headline": "The original headline text",
+          "input_headline": "The original headline text",
           "spectacular_violence_found": false
         }
         \`\`\`
@@ -472,7 +472,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Input: "Gang wars kill 3 in Chinchwad."
         \`\`\`json
         {
-          "original_headline": "Gang wars kill 3 in Chinchwad.",
+          "input_headline": "Gang wars kill 3 in Chinchwad.",
           "systemic_cause": "Poverty and racism",
           "rewritten_headline": "Gang wars kill 3 in Chinchwad (Systemic poverty and racism could be the deeper cause)"
         }
@@ -481,7 +481,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Input: "Leopard attacks cows and villagers"
         \`\`\`json
         {
-          "original_headline": "Leopard attacks cows and villagers",
+          "input_headline": "Leopard attacks cows and villagers",
           "systemic_cause": "Deforestation",
           "rewritten_headline": "Leopard attacks cows and villagers (Deforestation forced it out of its habitat)"
         }
@@ -490,7 +490,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Input: "Bomb blast rocks crowded marketplace in Baghdad"
         \`\`\`json
         {
-          "original_headline": "Bomb blast rocks crowded marketplace in Baghdad",
+          "input_headline": "Bomb blast rocks crowded marketplace in Baghdad",
           "systemic_cause": "Post-invasion instability and foreign occupation",
           "rewritten_headline": "Bomb blast rocks crowded marketplace in Baghdad (Post-invasion instability and foreign occupation may underlie this violence)"
         }
@@ -499,7 +499,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Input: "Teen killed in police chase in South LA"
         \`\`\`json
         {
-          "original_headline": "Teen killed in police chase in South LA",
+          "input_headline": "Teen killed in police chase in South LA",
           "systemic_cause": "Racial profiling and economic marginalization",
           "rewritten_headline": "Teen killed in police chase in South LA (Racial profiling and economic marginalization may be underlying factors)"
         }
@@ -508,7 +508,7 @@ Output ONLY valid JSON. Do NOT include any text, explanations, or markdown forma
         Input: "Protesters clash with police in downtown Cairo"
         \`\`\`json
         {
-          "original_headline": "Protesters clash with police in downtown Cairo",
+          "input_headline": "Protesters clash with police in downtown Cairo",
           "systemic_cause": "Authoritarian repression and political exclusion",
           "rewritten_headline": "Protesters clash with police in downtown Cairo (Authoritarian repression and political exclusion contribute to unrest)"
         }

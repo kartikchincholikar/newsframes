@@ -612,7 +612,7 @@
 
 Required JSON Output Schema:
 {
-  "original_headline": "{{headlineToAnalyze}}",
+  "input_headline": "{{headlineToAnalyze}}",
   "analysis_summary": "string (Brief summary of your findings regarding [SPECIFIC FRAMING ASPECT])",
   "analyzer_alternative_headline_with_placeholders": "string (The rewritten headline, or 'No relevant aspect found for this type of reframing.')"
 }
@@ -624,7 +624,7 @@ Input: "Default example input for new analyzer."
 Output:
 \`\`\`json
 {
-  "original_headline": "Default example input for new analyzer.",
+  "input_headline": "Default example input for new analyzer.",
   "analysis_summary": "Initial analysis based on [SPECIFIC FRAMING ASPECT].",
   "analyzer_alternative_headline_with_placeholders": "Rewritten headline based on [SPECIFIC GOAL]."
 }
