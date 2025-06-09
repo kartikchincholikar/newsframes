@@ -3,450 +3,865 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LangGraph Analyzer Editor</title>
-    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
-    <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
-    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
-
+    <title>LangGraph.js Analyzer Editor</title>
     <style>
-        /* ... (Your existing CSS) ... */
-        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f0f2f5; overflow: hidden; }
-        .top-bar { background-color: #333; color: white; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
-        .top-bar input[type="file"] { display: none; }
-        .top-bar label, .top-bar button { background-color: #555; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px; }
-        .top-bar label:hover, .top-bar button:hover { background-color: #007bff; }
-        .top-bar button#addAnalyzerButton { background-color: #2ecc71; margin-right: 15px; }
-        .top-bar button#addAnalyzerButton:hover { background-color: #27ae60; }
-        .main-content-area { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
-        #graph-section { width: 50%; display: flex; flex-direction: column; background-color: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-        #cy { width: 100%; flex-grow: 1; border: 1px solid #ccc; border-radius: 8px; }
-        #splitter { width: 10px; background-color: #e0e0e0; cursor: col-resize; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 3px; }
-        #splitter:hover { background-color: #c0c0c0; }
-        #splitter::before { content: '⋮'; font-size: 16px; color: #777; line-height: 0; }
-        #prompt-section { width: 50%; background-color: white; padding: 20px; overflow-y: auto; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        #prompt-section h2, #prompt-section h3, #prompt-section h4 { margin-top: 0; color: #333; }
-        #prompt-section h4 { margin-top: 20px; margin-bottom: 10px; border-top: 1px dashed #eee; padding-top: 15px;}
-        #prompt-section label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; color: #555; }
-        #prompt-section textarea { width: calc(100% - 22px); min-height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 13px; margin-bottom: 10px; box-sizing: border-box; }
-        #prompt-section input[type="text"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; box-sizing: border-box; }
-        .prompt-buttons { margin-top: 20px; display: flex; justify-content: space-between;}
-        .delete-button { background-color: #e74c3c !important; }
-        .delete-button:hover { background-color: #c0392b !important; }
-        .info-text { color: #777; font-size: 0.9em; margin-bottom: 15px; }
-        
-        /* NEW: Styles for the new examples section */
-        .examples-subsection { margin-top: 20px; border: 1px solid #e0e0e0; padding: 15px; border-radius: 6px; background-color: #f9f9f9;}
-        .example-item { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dotted #ccc; }
-        .example-item:last-child { border-bottom: none; }
-        .example-item label { margin-top: 5px; font-size: 0.95em; }
-        .example-item textarea { min-height: 60px; font-size: 12px; }
-        .add-example-button { background-color: #5cb85c; color:white; border:none; padding: 8px 12px; border-radius:4px; cursor: pointer; margin-top:10px; }
-        .add-example-button:hover { background-color: #4cae4c; }
-        .remove-example-button { background-color: #d9534f; color:white; border:none; padding: 3px 8px; font-size:12px; border-radius:3px; cursor:pointer; float:right; }
-
+        :root {
+            --bg-color: #1e1e1e;
+            --card-bg: #2a2a2a;
+            --input-bg: #3c3c3c;
+            --text-color: #d4d4d4;
+            --primary-color: #0e639c;
+            --primary-hover: #1177bb;
+            --danger-color: #b83232;
+            --danger-hover: #d33a3a;
+            --border-color: #4a4a4a;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --header-font: "Segoe UI", "Trebuchet MS", sans-serif;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+        h1 {
+            font-family: var(--header-font);
+            color: var(--text-color);
+            text-align: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .controls > div {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        .btn-add {
+            background-color: var(--primary-color);
+        }
+        .btn-add:hover {
+            background-color: var(--primary-hover);
+        }
+        .btn-download {
+            background-color: #2a9d8f;
+        }
+        .btn-download:hover {
+            background-color: #2ec4b6;
+        }
+        .btn-load { /* New Style for Load Button */
+            background-color: #6a6a6a;
+        }
+        .btn-load:hover {
+            background-color: #7c7c7c;
+        }
+        .task-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .task-header {
+            background-color: rgba(0,0,0,0.2);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .task-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+        .task-header h2 .arrow {
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .task-body {
+            padding: 20px;
+            display: none; /* Collapsed by default */
+        }
+        .task-card.expanded .task-body {
+            display: block;
+        }
+        .task-card.expanded .arrow {
+            transform: rotate(90deg);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #a0a0a0;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .btn-delete {
+            background-color: var(--danger-color);
+        }
+        .btn-delete:hover {
+            background-color: var(--danger-hover);
+        }
+        .examples-section {
+            border-top: 2px solid var(--border-color);
+            margin-top: 20px;
+            padding-top: 20px;
+        }
+        .example-card {
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            position: relative;
+        }
+        .btn-delete-example {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: transparent;
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+            padding: 3px 8px;
+            font-size: 12px;
+        }
+        .btn-delete-example:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        .btn-add-example {
+            background-color: #4a4a4a;
+            margin-top: 15px;
+        }
+        .btn-add-example:hover {
+            background-color: #5a5a5a;
+        }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <h2>LangGraph Analyzer Editor</h2>
-        <div>
-            <input type="file" id="fileInput" accept=".json">
-            <label for="fileInput">Load graph_config.json</label>
-            <button id="addAnalyzerButton">Add New Analyzer Task</button>
-            <button id="backupButton">Backup Current Config</button>
-            <button id="saveButton">Save Updated Config</button>
-        </div>
-    </div>
 
-    <div class="main-content-area">
-        <div id="graph-section">
-            <div id="cy"></div>
-        </div>
-        <div id="splitter"></div>
-        <div id="prompt-section">
-            <h2>Prompt Editor / Node Info</h2>
-            <p class="info-text">Click on an Analyzer Task node to edit its properties.</p>
-            <div id="editor-content">
-                <!-- Form will be populated here -->
+    <div class="container">
+        <h1>LangGraph.js Analyzer Editor</h1>
+
+        <div class="controls">
+            <button id="addNewTaskBtn" class="btn-add">Add New Analyzer Task</button>
+            <div>
+                <button id="loadJsonBtn" class="btn-load">Load Config</button>
+                <button id="downloadJsonBtn" class="btn-download">Download Updated JSON</button>
             </div>
         </div>
+
+        <div id="tasks-container">
+            <!-- Analyzer task cards will be dynamically inserted here -->
+        </div>
     </div>
+    
+    <!-- Hidden file input for loading JSON files -->
+    <input type="file" id="file-input" accept=".json" style="display: none;">
 
     <script>
-        // --- (Unchanged variables and setup logic) ---
-        const fileInput = document.getElementById('fileInput');
-        const saveButton = document.getElementById('saveButton');
-        const backupButton = document.getElementById('backupButton');
-        const addAnalyzerButton = document.getElementById('addAnalyzerButton');
-        
-        const graphSection = document.getElementById('graph-section');
-        const promptSection = document.getElementById('prompt-section');
-        const editorContent = document.getElementById('editor-content');
-        const promptSectionInfoText = promptSection.querySelector('.info-text');
-        const splitter = document.getElementById('splitter');
-
-        let cy;
-        let currentGraphConfig = null;
-        let selectedAnalyzerTaskId = null;
-        const ANALYZER_COORDINATOR_ID = "parallel_analyzers_coordinator";
-        const DATA_COLLECTOR_ID = "data_collector_for_saver";
-        const analyzerColors = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462', '#b3de69', '#fccde5', '#d9d9d9', '#bc80bd'];
-        let colorIndex = 0;
-
-        if (typeof dagre !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
-            cytoscape.use(cytoscapeDagre);
-        } else {
-            console.error("Dagre libraries not loaded.");
+    // The initial JSON configuration provided by the user
+    const initialConfig = {
+      "entryPointNodeId": "properNoun_replacer1",
+      "nodeDefinitions": [
+        {
+          "id": "properNoun_replacer1",
+          "displayName": "0. Proper Noun Replacer (Initial)",
+          "type": "llm_agent",
+          "stateInputArgs": {
+            "headline": "input_headline"
+          },
+          "stateOutputKey": "properNoun_replacement1_result",
+          "derivedStateOutputs": {
+            "headline_with_placeholders": {
+              "path": "text_with_placeholders",
+              "fallbackKey": "input_headline"
+            },
+            "properNoun_map": {
+              "path": "properNoun_map",
+              "fallbackValue": {}
+            }
+          },
+          "promptConfig": {
+            "systemMessage": "You are an AI assistant. Your task is to replace proper nouns in the given text with unique, bracketed, uppercase placeholders (e.g., [PERSON_A], [THING_B], [LOCATION_C]). Identify the original proper nouns and the placeholders you created. Output ONLY valid JSON as specified, without any markdown or other text outside the JSON structure.",
+            "developerInstructionsTemplate": "Instruction:\n1. Analyze the input text: \"{{headline}}\".\n2. Identify all proper nouns.\n3. For each identified proper noun, create a unique placeholder (e.g., [PERSON_A], [PERSON_B], [OBJECT_A], [GROUP_A]).\n4. Replace the proper nouns in the text with these placeholders.\n5. Provide a mapping of each placeholder to its original proper noun.\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"original_text\": \"The original input text, which is '{{headline}}'\",\n  \"text_with_placeholders\": \"The text with properNouns replaced by placeholders\",\n  \"properNoun_map\": {\n    \"[PLACEHOLDER_A]\": \"original_properNoun_A\",\n    \"[PLACEHOLDER_B]\": \"original_properNoun_B\"\n  }\n}\n\nExample:\nInput Text: \"Satya Nadella visited London.\"\nOutput:\n{\n  \"original_text\": \"Satya Nadella visited London.\",\n  \"text_with_placeholders\": \"[PERSON_A] visited [LOCATION_A].\",\n  \"properNoun_map\": {\n    \"[PERSON_A]\": \"Satya Nadella\",\n    \"[LOCATION_A]\": \"London\"\n  }\n}",
+            "userInputTemplate": "Process this text: \"{{headline}}\""
+          }
+        },
+        {
+          "id": "parallel_analyzers_coordinator",
+          "displayName": "1. Parallel Analyzers",
+          "type": "parallel_llm_group_coordinator",
+          "stateInputArgs": {
+            "headline_with_placeholders": "headline_with_placeholders",
+            "input_headline": "input_headline"
+          },
+          "analyzerTasks": [
+            {
+              "id": "cognitive_frames_analyzer",
+              "displayName": "1a. Cognitive Frames Analysis & Flip",
+              "stateOutputKey": "cognitive_frames_analysis_result",
+              "promptConfig": {
+                "systemMessage": "You are an expert in Journalism and Media Studies specializing in cognitive frame analysis. Your job is to study news headlines (which may contain placeholders like [PERSON_A]) to identify embedded cognitive frames AND to attempt to rewrite the headline by emphasizing an alternative or opposing frame. Output ONLY valid JSON as specified.",
+                "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Identify relevant cognitive frames (e.g., Conflict, Human Interest, Responsibility, Economic Consequences, Morality, Progress/Recovery).\n3. Based on your analysis, select a dominant frame and then rewrite the headline to emphasize an alternative or opposing cognitive frame while preserving the core facts from the original headline. Retain the placeholders in the input headline.                                                                                                                                            \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"[COMPANY_A] announces record profits amidst layoffs, citing efficiency gains.\"\nOutput:\n{\n  \"input_headline\": \"[COMPANY_A] announces record profits amidst layoffs, citing efficiency gains.\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Despite [COMPANY_A]'s record profits, workers face job losses as company prioritizes 'efficiency'.\"\n}",
+                "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
+              }
+            },
+            {
+              "id": "speculative_reframing_analyzer",
+              "displayName": "1b. Speculative Reframing",
+              "stateOutputKey": "speculative_reframing_result",
+              "promptConfig": {
+                "systemMessage": "You are an expert in Journalism and Media Studies. You specialize in rewriting news headlines with additional plausible, but unlikely, speculative information, inspired by Russell's Teapot. Write clearly and plausibly. Respond ONLY in valid JSON format as specified.",
+                "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Understand the headline, the agent/patient roles, verbs, and study the message being conveyed to the audience.                          \n3. Rewrite the headline by adding extra speculative information, speculative explainations and backstories. This additions could be physically plausible, but should be unlikely. The additions can by jocular, dodgy, blimey, serious, devastating, mysterious, clickbaity and not necessarily paranoid. Place these speculative additon in parentheses. Retain the placeholders in the input headline.\n4  Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"Dog attacks 4-year-old causing injuries\"\nOutput:\n{\n  \"input_headline\": \"Dog attacks 4-year-old causing injuries\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Dog attacks 4-year-old causing injuries (perhaps because the child had been unknowingly tormenting the dog's hidden puppies for weeks)\"\n}",
+                "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
+              }
+            },
+            {
+              "id": "euphemism_analyzer",
+              "displayName": "1c. Euphemism Analysis & Literal Flip",
+              "stateOutputKey": "euphemism_analysis_result",
+              "promptConfig": {
+                "systemMessage": "You are an expert in Journalism and Media Studies. Your job is to study news headlines (which may contain placeholders like [PERSON_A]) to detect euphemisms, explain their impact, AND rewrite the headline using direct, literal language. Output ONLY valid JSON as specified.",
+                "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Detect euphemistic, diplomatic terms or phrases, which downplay, white wash or use Colonial Administrative Language in the headline .   \n3. For each identified euphemistic, diplomatic, or Colonial Administrative term analyze what is being downplayed or minimized. Place any additional information added in parentheses. Rewrite the entire headline by replacing all impactful euphemisms with their direct, literal crude meanings. Retain the placeholders in the input headline.          \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"[MILITARY_UNIT] neutralized targets in [AREA_X] during a security operation.\"\nOutput:\n{\n  \"input_headline\": \"[MILITARY_UNIT] neutralized targets in [AREA_X] during a security operation.\",\n  \"analysis\": \"[Write analysis here]\",\n  \"rewritten_headline\": \"[MILITARY_UNIT] killed people or destroyed objectives in [AREA_X] during a military offensive.\"\n}",
+                "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
+              }
+            },
+            {
+              "id": "episodic_thematic_analyzer",
+              "displayName": "1d. episodic_thematic Analysis (Episodic/Thematic)",
+              "stateOutputKey": "episodic_thematic_analysis_result",
+              "promptConfig": {
+                "systemMessage": "You are an expert in media framing analysis. Analyze news snippets to identify whether they use episodic or thematic framing and suggest a reframing that might include placeholders. Output ONLY valid JSON as specified.",
+                "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if the headline uses thematic or episodic news framing to get a point accross.                                                \n3. If thematic framing is detected, convert it and rewrite the headline using episodic framing. If episodic framing is detected, convert it and rewrite the headline using thematic framing. Place any additional information added in parentheses. Retain the placeholders in the input headline.                                                                                                      \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\"\nOutput:\n{\n  \"input_headline\": \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Widespread malnutrition, exacerbated by drought and aid shortages in places like [CITY_A], continues to claim young lives across the Horn of Africa, highlighting a systemic crisis.\"\n}",
+                "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
+              }
+            },
+            {
+              "id": "violence_type_analyzer",
+              "displayName": "1e. Violence Type Analysis & Systemic Link",
+              "stateOutputKey": "violence_type_analysis_result",
+              "promptConfig": {
+                "systemMessage": "You are an expert in media news framing. Your job is analyze a headline contains spectacular violence (sudden, dramatic harm such as attacks, riots, murders). If spectacular violence IS found, you will speculate a plausible underlying systemic/structural cause and rewrite the headline appending this cause in parentheses. Output ONLY valid JSON as specified.",
+                "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if the headlines contains spectacular violence (sudden, dramatic harm such as attacks, riots, murders).                       \n3. If spectacular violence is found, you will speculate a plausible underlying systemic/structural cause and rewrite the headline appending this cause in parentheses. If spectacular violence is not found: Indicate this clearly in the output. Retain the placeholders in the input headline.                                                                                                        \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"Rioters smash downtown storefronts in [CITY_B].\"\nOutput:\n{\n  \"input_headline\": \"Rioters smash downtown storefronts in [CITY_B].\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Rioters smash downtown storefronts in [CITY_B] (amid rising youth unemployment and a lack of community services).\"\n}",
+                "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
+              }
+            }
+          ]
+        },
+        {
+          "id": "speculative_reverter",
+          "displayName": "Revert Speculative Headline",
+          "type": "local_function",
+          "functionName": "revertGenericAnalyzerHeadline",
+          "stateInputArgs": {
+            "analyzer_result_object": "speculative_reframing_result",
+            "properNoun_map": "properNoun_map"
+          },
+          "stateOutputKey": "speculative_reverted_headline"
+        },
+        {
+          "id": "episodic_thematic_reverter",
+          "displayName": "Revert episodic_thematic Suggestion",
+          "type": "local_function",
+          "functionName": "revertGenericAnalyzerHeadline",
+          "stateInputArgs": {
+            "analyzer_result_object": "episodic_thematic_analysis_result",
+            "properNoun_map": "properNoun_map"
+          },
+          "stateOutputKey": "episodic_thematic_reverted_headline"
+        },
+        {
+          "id": "violence_type_reverter",
+          "displayName": "Revert Violence Type Headline",
+          "type": "local_function",
+          "functionName": "revertGenericAnalyzerHeadline",
+          "stateInputArgs": {
+            "analyzer_result_object": "violence_type_analysis_result",
+            "properNoun_map": "properNoun_map"
+          },
+          "stateOutputKey": "violence_type_reverted_headline"
+        },
+        {
+          "id": "cognitive_frames_reverter",
+          "displayName": "Revert Cognitive Type Headline",
+          "type": "local_function",
+          "functionName": "revertGenericAnalyzerHeadline",
+          "stateInputArgs": {
+            "analyzer_result_object": "cognitive_frames_analysis_result",
+            "properNoun_map": "properNoun_map"
+          },
+          "stateOutputKey": "cognitive_frames_reverted_headline"
+        },
+        {
+          "id": "euphemism_reverter",
+          "displayName": "Revert Euphemism Type Headline",
+          "type": "local_function",
+          "functionName": "revertGenericAnalyzerHeadline",
+          "stateInputArgs": {
+            "analyzer_result_object": "euphemism_analysis_result",
+            "properNoun_map": "properNoun_map"
+          },
+          "stateOutputKey": "euphemism_reverted_headline"
+        },
+        {
+          "id": "synthesizer",
+          "displayName": "2. Synthesizer (Main Flip)",
+          "type": "llm_agent",
+          "stateInputArgs": {
+            "headlineToSynthesize": "headlineToAnalyze",
+            "analysis1": "cognitive_frames_analysis_result",
+            "analysis2": "speculative_reframing_result",
+            "analysis3": "euphemism_analysis_result",
+            "analysis4": "episodic_thematic_analysis_result",
+            "analysis5": "violence_type_analysis_result"
+          },
+          "stateOutputKey": "synthesis_result",
+          "derivedStateOutputs": {
+            "main_flipped_headline_with_placeholders": {
+              "path": "flipped_headline",
+              "fallbackValue": "Main alternative perspective unavailable (synthesis error or not found)"
+            }
+          },
+          "promptConfig": {
+            "systemMessage": "You are an expert in Journalism and Media Studies specializing in news framing. Your task is to generate a 'flipped_headline' that conveys the SAME CORE FACTS from the original headline but with an opposite (flipped) news framing, based on the provided analyses. Output ONLY valid JSON as specified.",
+            "developerInstructionsTemplate": "Instruction:\n1. Study the original headline: \"{{headlineToSynthesize}}\".\n2. Review the provided analyses:\n   - Cognitive News Framing: {{analysis1}}\n   - Speculative News Framing : {{analysis2}}\n   - Euphemistic News Framing: {{analysis3}}\n   - Episodic/Thematic News Framing: {{analysis4}}\n   - Spectacular/Systemic Violence News Framing: {{analysis5}}\n3. Based on these, choose one or more analyses that provide strong evidence of a particular news frame in the original headline.\n4. Generate a \"flipped_headline\" that reverses or significantly alters this news framing while ATTEMPTING TO PRESERVE THE CORE FACTUAL INFORMATION.\n5. The flipped headline should ideally use the same placeholders if they were present in \"{{headlineToSynthesize}}\".\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"input_headline_processed\": \"{{headlineToSynthesize}}\",\n  \"flipped_headline\": \"string (The new headline with flipped framing, may contain placeholders)\",\n  \"reasoning_for_flip\": \"string (Brief explanation of which analysis inspired the flip and how the frame was altered)\",\n  \"analysis_summary_used\": { \n      \"cognitive_frames_had_error\": {{analysis1.error ? true : false}},\n      \"speculative_reframing_had_error\": {{analysis2.error ? true : false}},\n      \"euphemism_analysis_had_error\": {{analysis3.error ? true : false}},\n      \"episodic_thematic_analysis_had_error\": {{analysis4.error ? true : false}},\n      \"violence_type_analysis_had_error\": {{analysis5.error ? true : false}}\n  }\n}\nExample:\nInput Headline: \"[LEADER_X] announces decisive action against protest.\"\nCognitive Frame Analysis might indicate \"Control/Order\" frame.\nFlipped Headline might be: \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\"\n\nOutput:\n{\n  \"input_headline_processed\": \"[LEADER_X] announces decisive action against protest.\",\n  \"flipped_headline\": \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\",\n  \"reasoning_for_flip\": \"Flipped from a 'Control/Order' frame implied by 'decisive action' to a 'Concern/Rights' frame by focusing on community perspective and 'escalates measures'.\",\n  \"analysis_summary_used\": { \"cognitive_frames_had_error\": false, \"speculative_reframing_had_error\": false, \"euphemism_analysis_had_error\": false, \"episodic_thematic_analysis_had_error\": false, \"violence_type_analysis_had_error\": false }\n}",
+            "userInputTemplate": "Synthesize a flipped headline for: \"{{headlineToSynthesize}}\" using the provided analyses."
+          }
+        },
+        {
+          "id": "main_headline_reverter",
+          "displayName": "3. Revert Main Flipped Headline",
+          "type": "local_function",
+          "functionName": "revertProperNouns",
+          "stateInputArgs": {
+            "text_with_placeholders": "main_flipped_headline_with_placeholders",
+            "properNoun_map": "properNoun_map"
+          }
+        },
+        {
+          "id": "data_collector_for_saver",
+          "displayName": "Collect Data for Saver",
+          "type": "local_function",
+          "functionName": "collectAndVerifyDataForSaver",
+          "stateInputArgs": {
+            "input_headline": "input_headline",
+            "main_flipped_headline_from_state": "flipped_headline",
+            "speculative_reverted_headline": "speculative_reverted_headline",
+            "episodic_thematic_reverted_headline": "episodic_thematic_reverted_headline",
+            "violence_type_reverted_headline": "violence_type_reverted_headline",
+            "cognitive_frames_reverted_headline": "cognitive_frames_reverted_headline",
+            "euphemism_reverted_headline": "euphemism_reverted_headline"
+          },
+          "stateOutputKey": "data_package_for_saver"
+        },
+        {
+          "id": "saver",
+          "displayName": "4. Save All to DB",
+          "type": "local_function",
+          "functionName": "saveAllToDynamoDB",
+          "stateInputArgs": {
+            "packaged_data": "data_package_for_saver"
+          },
+          "stateOutputKey": "db_save_status"
         }
+      ],
+      "graphEdges": [
+        { "source": "properNoun_replacer1", "target": "parallel_analyzers_coordinator" },
+        { "source": "parallel_analyzers_coordinator", "target": "cognitive_frames_reverter" },
+        { "source": "parallel_analyzers_coordinator", "target": "euphemism_reverter" },
+        { "source": "parallel_analyzers_coordinator", "target": "speculative_reverter" },
+        { "source": "parallel_analyzers_coordinator", "target": "episodic_thematic_reverter" },
+        { "source": "parallel_analyzers_coordinator", "target": "violence_type_reverter" },
+        { "source": "parallel_analyzers_coordinator", "target": "synthesizer" },
+        { "source": "synthesizer", "target": "main_headline_reverter" },
+        { "source": "main_headline_reverter", "target": "data_collector_for_saver" },
+        { "source": "cognitive_frames_reverter", "target": "data_collector_for_saver" },
+        { "source": "euphemism_reverter", "target": "data_collector_for_saver" },
+        { "source": "speculative_reverter", "target": "data_collector_for_saver" },
+        { "source": "episodic_thematic_reverter", "target": "data_collector_for_saver" },
+        { "source": "violence_type_reverter", "target": "data_collector_for_saver" },
+        { "source": "data_collector_for_saver", "target": "saver" },
+        { "source": "saver", "target": "END" }
+      ]
+    };
+    
+    // In-memory state of the configuration
+    let configData;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Deep copy to avoid modifying the original constant object
+        configData = JSON.parse(JSON.stringify(initialConfig));
+        renderAnalyzerTasks();
+
+        // Attach event listeners
+        document.getElementById('addNewTaskBtn').addEventListener('click', addNewTask);
+        document.getElementById('downloadJsonBtn').addEventListener('click', downloadJson);
         
-        document.addEventListener('DOMContentLoaded', () => {
-            showDefaultPromptEditorState();
-            initSplitter();
+        // --- NEW: Load functionality listeners ---
+        document.getElementById('loadJsonBtn').addEventListener('click', () => {
+            document.getElementById('file-input').click();
         });
+        document.getElementById('file-input').addEventListener('change', handleFileLoad);
+    });
 
-        fileInput.addEventListener('change', handleFileLoad);
-        saveButton.addEventListener('click', handleSave);
-        backupButton.addEventListener('click', handleBackup);
-        addAnalyzerButton.addEventListener('click', handleAddAnalyzer);
-
-        function showDefaultPromptEditorState(message = "Click on an Analyzer Task node (colored nodes within the 'Analyzer Group') to edit its properties, or add a new one.") {
-            editorContent.innerHTML = '';
-            if (promptSectionInfoText) {
-                promptSectionInfoText.style.display = 'block';
-                promptSectionInfoText.textContent = message;
-            }
-            promptSection.querySelector('h2').textContent = "Prompt Editor / Node Info";
-            selectedAnalyzerTaskId = null;
+    // --- NEW: File loading function ---
+    function handleFileLoad(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return; // User cancelled the dialog
         }
 
-        function initSplitter() { /* ... unchanged ... */ 
-            let isDragging = false, startX, startGraphWidth, startPromptWidth;
-            splitter.addEventListener('mousedown', function(e) {
-                isDragging = true; startX = e.clientX; startGraphWidth = graphSection.offsetWidth; startPromptWidth = promptSection.offsetWidth;
-                document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
-            });
-            document.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                const dx = e.clientX - startX;
-                graphSection.style.width = `${startGraphWidth + dx}px`;
-                promptSection.style.width = `${startPromptWidth - dx}px`;
-                if(cy) cy.resize();
-            });
-            document.addEventListener('mouseup', function() {
-                if (isDragging) {
-                    isDragging = false; document.body.style.cursor = 'default'; document.body.style.userSelect = 'auto';
-                    if (cy) { cy.resize(); cy.layout({ name: 'dagre', rankDir: 'TB', spacingFactor: 1.1, nodeSep: 50, fit: true, padding: 30 }).run(); }
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                const newConfig = JSON.parse(e.target.result);
+
+                // Basic validation: Check for essential top-level keys
+                if (!newConfig.nodeDefinitions || !newConfig.graphEdges || !newConfig.entryPointNodeId) {
+                    alert('Invalid configuration file. It appears to be missing required keys like "nodeDefinitions", "graphEdges", or "entryPointNodeId".');
+                    return;
                 }
-            });
-        }
-        function handleFileLoad(event) { /* ... unchanged ... */
-            const file = event.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    currentGraphConfig = JSON.parse(e.target.result);
-                    initializeCytoscape(currentGraphConfig);
-                    showDefaultPromptEditorState();
-                } catch (err) { alert("Error parsing JSON file: " + err.message); }
-            };
-            reader.readAsText(file);
-        }
-        function handleBackup() { /* ... unchanged ... */ 
-            if (!currentGraphConfig) { alert("No config loaded."); return; }
-            downloadJSON(currentGraphConfig, `graph_config_backup_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
-        }
-        function handleSave() { // MODIFIED: Always save changes from form before download
-            if (!currentGraphConfig) { alert("No config loaded."); return; }
-            if (selectedAnalyzerTaskId) { 
-                if (!savePromptChangesToConfig(selectedAnalyzerTaskId, true)) { // Pass silent=true
-                    return; // Stop if save fails due to invalid JSON
-                }; 
-            }
-            downloadJSON(currentGraphConfig, 'graph_config_updated.json');
-        }
-        function downloadJSON(data, filename) { /* ... unchanged ... */ 
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function initializeCytoscape(config) { /* ... unchanged ... */
-            const elements = []; colorIndex = 0;
-            const coordinatorNodeDef = config.nodeDefinitions.find(n => n.id === ANALYZER_COORDINATOR_ID);
-            config.nodeDefinitions.forEach(nodeDef => elements.push({ data: { id: nodeDef.id, label: nodeDef.displayName, type: nodeDef.type }}));
-            if (coordinatorNodeDef && coordinatorNodeDef.analyzerTasks) {
-                coordinatorNodeDef.analyzerTasks.forEach(task => {
-                    const taskColor = analyzerColors[colorIndex++ % analyzerColors.length];
-                    elements.push({ data: { id: task.id, label: task.displayName, parent: ANALYZER_COORDINATOR_ID, type: 'analyzer_task', color: taskColor }});
-                });
-            }
-            if (config.graphEdges.some(edge => edge.target === 'END')) elements.push({ data: { id: 'END', label: 'END' }});
-            config.graphEdges.forEach(edge => elements.push({ data: { id: `${edge.source}_to_${edge.target}`, source: edge.source, target: edge.target }}));
-            if (cy) cy.destroy();
-            cy = cytoscape({
-                container: document.getElementById('cy'), elements,
-                style: [ { selector: 'node', style: { 'label': 'data(label)', 'text-valign': 'center', 'text-wrap': 'wrap', 'text-max-width': '90px', 'background-color': '#e8e8e8', 'shape': 'round-rectangle'}}, { selector: 'edge', style: { 'width': 1.5, 'line-color': '#ccc', 'target-arrow-color': '#ccc', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier' } }, { selector: 'node[type="analyzer_task"]', style: { 'background-color': 'data(color)', 'border-color': 'black', 'font-weight': 'bold', 'font-size': '12px' } }, { selector: `node[parent="${ANALYZER_COORDINATOR_ID}"]`, style: {'font-size': '11px', 'width': '100px', 'height': '50px'}}, { selector: `#${ANALYZER_COORDINATOR_ID}`, style: { 'background-color': 'rgba(230, 240, 255, 0.7)', 'shape': 'rectangle', 'border-color': '#a0c0e0', 'border-width': 2, 'label': 'Analyzer Group (Parallel)', 'padding': '25px', 'text-valign': 'top', 'font-weight': 'bold', 'color': '#4682b4' } }, { selector: '#END', style: { 'background-color': '#a9a9a9', 'shape': 'ellipse', 'width': '70px', 'height': '40px' } }, { selector: 'node:selected', style: { 'border-width': 3, 'border-color': '#0056b3' } }],
-                layout: { name: 'dagre', rankDir: 'TB', spacingFactor: 1.2, nodeSep: 60, rankSep: 80, fit: true, padding: 30 }
-            });
-            cy.on('tap', 'node', function(event){ /* ... unchanged event handler logic ... */
-                const clickedNode = event.target; const nodeId = clickedNode.id(); const nodeType = clickedNode.data('type');
-                cy.nodes().deselect(); clickedNode.select();
-                if (nodeType === 'analyzer_task') { selectedAnalyzerTaskId = nodeId; populatePromptEditor(nodeId); }
-                else { showDefaultPromptEditorState(`Selected Node: ${clickedNode.data('label')}. Only Analyzer Task nodes can be edited with the form.`);}
-            });
-        }
-        function findNodeDefinition(nodeId) { return currentGraphConfig.nodeDefinitions.find(n => n.id === nodeId); }
-        function findAnalyzerTask(taskId) { const coordinator = findNodeDefinition(ANALYZER_COORDINATOR_ID); return coordinator ? coordinator.analyzerTasks.find(task => task.id === taskId) : null; }
-
-        // NEW: --- FUNCTIONS FOR PARSING AND RECONSTRUCTING EXAMPLES ---
-        const EXAMPLE_BLOCK_REGEX = /^\s*### Examples:\s*([\s\S]*?)(?=\n###|\n\n\w|$)/im;
-        const SINGLE_EXAMPLE_REGEX = /\*\*Example \d+.*?\*\*[\s\S]*?Input:[\s\n]*?"?([\s\S]*?)"?[\s\n]+Output:\s*```json\s*([\s\S]*?)\s*```/gi;
-        const EXAMPLES_HEADER = "### Examples:";
-
-        function parseExamplesFromDevInstructions(devInstructions) {
-            const examples = [];
-            if (typeof devInstructions !== 'string') return examples;
-
-            // OLD, TOO STRICT REGEX:
-            // const SINGLE_EXAMPLE_REGEX = /\*\*Example \d+.*?\*\*[\s\S]*?Input:[\s\n]*?"?([\s\S]*?)"?[\s\n]+Output:\s*```json\s*([\s\S]*?)\s*```/gi;
-
-            // NEW, MORE FLEXIBLE REGEX:
-            // This regex looks for the "Example...Input...Output" keywords and captures the input text and the subsequent raw JSON block {}.
-            const FLEXIBLE_EXAMPLE_REGEX = /Example.*?:[\s\n]*?Input:\s*"?([\s\S]*?)"?[\s\n]*?Output:\s*({[\s\S]*?})(?=\n\nExample|$)/gi;
-
-            let match;
-            // We use the new regex here.
-            while ((match = FLEXIBLE_EXAMPLE_REGEX.exec(devInstructions)) !== null) {
-                try {
-                    // match[1] is the captured Input text.
-                    // match[2] is the captured Output JSON string.
-                    const input = match[1].trim().replace(/^"|"$/g, ''); // Clean up quotes
-                    const outputJson = JSON.parse(match[2].trim());
-                    examples.push({ input, output: outputJson });
-                } catch (e) {
-                    console.warn("Failed to parse an example JSON block with the new regex:", e, match[2]);
+                
+                // More specific validation: Check if the parallel coordinator exists
+                const parallelNode = newConfig.nodeDefinitions.find(n => n.id === 'parallel_analyzers_coordinator');
+                if (!parallelNode || !Array.isArray(parallelNode.analyzerTasks)) {
+                    alert('Invalid configuration file. Could not find the "parallel_analyzers_coordinator" node or its "analyzerTasks" array.');
+                    return;
                 }
-            }
-            
-            // If the new regex found nothing, try the original one for backwards compatibility
-            // in case some examples are already in the new, structured format.
-            if (examples.length === 0) {
-                const ORIGINAL_EXAMPLE_REGEX = /\*\*Example \d+.*?\*\*[\s\S]*?Input:[\s\n]*?"?([\s\S]*?)"?[\s\n]+Output:\s*```json\s*([\s\S]*?)\s*```/gi;
-                while ((match = ORIGINAL_EXAMPLE_REGEX.exec(devInstructions)) !== null) {
-                    try {
-                        const input = match[1].trim().replace(/^"|"$/g, '');
-                        const outputJson = JSON.parse(match[2].trim());
-                        examples.push({ input, output: outputJson });
-                    } catch (e) {
-                        console.warn("Failed to parse an example JSON block with the original regex:", e, match[2]);
-                    }
-                }
-            }
 
-            return examples;
+                // If validation passes, update the global state
+                configData = newConfig;
+                
+                // Re-render the entire UI with the new data
+                renderAnalyzerTasks();
+                
+                alert('Configuration loaded successfully!');
+
+            } catch (error) {
+                console.error("Error parsing JSON file:", error);
+                alert('Failed to load file. It might not be a valid JSON file.');
+            } finally {
+                // Reset the file input value. This allows reloading the same file.
+                event.target.value = null;
+            }
+        };
+
+        reader.onerror = function() {
+            alert('An error occurred while reading the file.');
+        };
+
+        reader.readAsText(file);
+    }
+
+    function getAnalyzersNode() {
+        // Handle case where configData might not be fully loaded or is invalid
+        if (!configData || !configData.nodeDefinitions) {
+            console.error("Config data is not initialized properly.");
+            return null;
         }
+        return configData.nodeDefinitions.find(n => n.id === 'parallel_analyzers_coordinator');
+    }
+    
+    // --- Render Functions ---
 
-        function renderExamplesUI(examples, containerElement, taskId) {
-            containerElement.innerHTML = '<h4>Editable Examples:</h4>';
-            if (examples.length === 0) {
-                containerElement.innerHTML += '<p>No examples found or parsed. You can add one below.</p>';
-            }
-            examples.forEach((ex, index) => {
-                const exampleDiv = document.createElement('div');
-                exampleDiv.className = 'example-item';
-                exampleDiv.dataset.exampleIndex = index;
-                exampleDiv.innerHTML = `
-                    <label for="ex-input-${index}-${taskId}">Example ${index + 1} Input: <button type="button" class="remove-example-button" onclick="removeExample(${index}, '${taskId}')">Remove</button></label>
-                    <textarea id="ex-input-${index}-${taskId}">${ex.input}</textarea>
-                    <label for="ex-output-${index}-${taskId}">Example ${index + 1} Output (JSON):</label>
-                    <textarea id="ex-output-${index}-${taskId}" class="example-output-json">${JSON.stringify(ex.output, null, 2)}</textarea>
+    function renderAnalyzerTasks() {
+        const container = document.getElementById('tasks-container');
+        container.innerHTML = '';
+        const analyzersNode = getAnalyzersNode();
+
+        if (analyzersNode && analyzersNode.analyzerTasks) {
+            analyzersNode.analyzerTasks.forEach((task, index) => {
+                const taskCard = document.createElement('div');
+                taskCard.className = 'task-card';
+                taskCard.dataset.taskId = task.id;
+
+                const { instructions, examples } = parseDeveloperInstructions(task.promptConfig.developerInstructionsTemplate);
+                
+                // Store parsed examples for easier updates
+                task.parsedExamples = examples;
+                task.instructionsText = instructions;
+
+                taskCard.innerHTML = `
+                    <div class="task-header">
+                        <h2><span class="arrow">▶</span> ${task.displayName}</h2>
+                        <button class="btn-delete" data-task-id="${task.id}">Delete Task</button>
+                    </div>
+                    <div class="task-body">
+                        <div class="form-group">
+                            <label for="displayName-${task.id}">Display Name</label>
+                            <input type="text" id="displayName-${task.id}" value="${task.displayName}">
+                        </div>
+                        <div class="form-group">
+                            <label for="systemMessage-${task.id}">System Message</label>
+                            <textarea id="systemMessage-${task.id}">${task.promptConfig.systemMessage}</textarea>
+                        </div>
+                         <div class="form-group">
+                            <label for="userInputTemplate-${task.id}">User Input Template</label>
+                            <textarea id="userInputTemplate-${task.id}">${task.promptConfig.userInputTemplate}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="instructions-${task.id}">Developer Instructions (text part)</label>
+                            <textarea id="instructions-${task.id}">${instructions}</textarea>
+                        </div>
+                        <div class="examples-section">
+                            <h3>Examples</h3>
+                            <div id="examples-container-${task.id}"></div>
+                            <button class="btn-add-example" data-task-id="${task.id}">Add Example</button>
+                        </div>
+                    </div>
                 `;
-                containerElement.appendChild(exampleDiv);
+                container.appendChild(taskCard);
+                renderExamples(task.id, examples);
             });
-            const addExampleBtn = document.createElement('button');
-            addExampleBtn.textContent = 'Add Another Example';
-            addExampleBtn.className = 'add-example-button';
-            addExampleBtn.type = 'button';
-            addExampleBtn.onclick = () => addNewExampleUI(containerElement, taskId);
-            containerElement.appendChild(addExampleBtn);
         }
-        
-        window.removeExample = function(index, taskId) {
-            const examplesContainer = document.getElementById(`examples-subsection-${taskId}`);
-            const exampleItemToRemove = examplesContainer.querySelector(`.example-item[data-example-index="${index}"]`);
-            if(exampleItemToRemove) {
-                exampleItemToRemove.remove();
-                // Re-index remaining examples
-                const remainingItems = examplesContainer.querySelectorAll('.example-item');
-                remainingItems.forEach((item, newIndex) => {
-                    item.dataset.exampleIndex = newIndex;
-                    const label = item.querySelector('label[for^="ex-input"]');
-                    label.innerHTML = `Example ${newIndex + 1} Input: <button type="button" class="remove-example-button" onclick="removeExample(${newIndex}, '${taskId}')">Remove</button>`;
-                    item.querySelector('label[for^="ex-output"]').textContent = `Example ${newIndex + 1} Output (JSON):`;
-                    item.querySelector('textarea[id^="ex-input"]').id = `ex-input-${newIndex}-${taskId}`;
-                    item.querySelector('textarea[id^="ex-output"]').id = `ex-output-${newIndex}-${taskId}`;
-                });
-            }
-        }
+        addEventListeners();
+    }
 
-        function addNewExampleUI(containerElement, taskId) {
-            const examples = getEditedExamplesFromUI(taskId, true); // Get current examples from UI, silent on errors
-            const newIndex = examples.length;
-            const exampleDiv = document.createElement('div');
-            exampleDiv.className = 'example-item';
-            exampleDiv.dataset.exampleIndex = newIndex;
-            exampleDiv.innerHTML = `
-                <label for="ex-input-${newIndex}-${taskId}">Example ${newIndex + 1} Input: <button type="button" class="remove-example-button" onclick="removeExample(${newIndex}, '${taskId}')">Remove</button></label>
-                <textarea id="ex-input-${newIndex}-${taskId}" placeholder="Enter example input text..."></textarea>
-                <label for="ex-output-${newIndex}-${taskId}">Example ${newIndex + 1} Output (JSON):</label>
-                <textarea id="ex-output-${newIndex}-${taskId}" class="example-output-json" placeholder="Enter valid JSON output...">${JSON.stringify({ rewritten_headline: "New example placeholder" }, null, 2)}</textarea>
-            `;
-            containerElement.insertBefore(exampleDiv, containerElement.querySelector('.add-example-button'));
-        }
-
-        function getEditedExamplesFromUI(taskId, silent = false) {
-            const editedExamples = [];
-            const exampleItems = document.querySelectorAll(`#examples-subsection-${taskId} .example-item`);
-            let hasError = false;
-            exampleItems.forEach((item, index) => {
-                const inputEl = item.querySelector(`textarea[id^="ex-input-"]`);
-                const outputEl = item.querySelector(`textarea[id^="ex-output-"]`);
-                if (inputEl && outputEl) {
-                    try {
-                        const outputJson = JSON.parse(outputEl.value);
-                        editedExamples.push({ input: inputEl.value.trim(), output: outputJson });
-                        outputEl.style.borderColor = '#ddd'; // Reset border on success
-                    } catch (e) {
-                        if (!silent) {
-                            alert(`Error parsing JSON for Example ${index + 1}: ${e.message}. Please fix the JSON before saving.`);
-                            outputEl.style.borderColor = 'red';
-                            outputEl.focus();
-                        }
-                        hasError = true;
-                    }
-                }
-            });
-            return hasError ? null : editedExamples;
-        }
-
-        function reconstructDevInstructions(instructionsText, editedExamples) {
-            let examplesString = "";
-            if (editedExamples.length > 0) {
-                examplesString = EXAMPLES_HEADER + "\n\n";
-                editedExamples.forEach((ex, index) => {
-                    const outputStr = JSON.stringify(ex.output, null, 2);
-                    examplesString += `**Example ${index + 1}:**\nInput: "${ex.input}"\nOutput:\n\`\`\`json\n${outputStr}\n\`\`\`\n\n`;
-                });
-            }
-            return (instructionsText.trim() + "\n\n" + examplesString.trim()).trim();
-        }
-
-        // MODIFIED: This function now drives the new UI
-        function populatePromptEditor(taskId) {
-            const task = findAnalyzerTask(taskId);
-            if (!task) {
-                editorContent.innerHTML = "<p>Error: Analyzer task object not found.</p>"; return;
-            }
-            selectedAnalyzerTaskId = taskId;
-            if (promptSectionInfoText) promptSectionInfoText.style.display = 'none';
-            promptSection.querySelector('h2').textContent = `Edit Analyzer: ${task.displayName}`;
-
-            const devInstructions = task.promptConfig.developerInstructionsTemplate || '';
-            const parsedExamples = parseExamplesFromDevInstructions(devInstructions);
-            
-            let mainDevInstructionsText = devInstructions.replace(EXAMPLE_BLOCK_REGEX, '').trim();
-
-            editorContent.innerHTML = `
-                <h3>${task.displayName}</h3>
-                <div><label for="edit-displayName-${taskId}">Display Name:</label><input type="text" id="edit-displayName-${taskId}" value="${task.displayName}"></div>
-                <div><label for="edit-stateOutputKey-${taskId}">State Output Key:</label><input type="text" id="edit-stateOutputKey-${taskId}" value="${task.stateOutputKey || ''}" readonly></div>
-                <hr><h4>Prompt Configuration:</h4>
-                <div><label for="edit-systemMessage-${taskId}">System Message:</label><textarea id="edit-systemMessage-${taskId}">${task.promptConfig.systemMessage || ''}</textarea></div>
-                <div><label for="edit-devInstructionsText-${taskId}">Developer Instructions (excluding examples):</label><textarea id="edit-devInstructionsText-${taskId}" style="min-height: 150px;">${mainDevInstructionsText}</textarea></div>
-                <div class="examples-subsection" id="examples-subsection-${taskId}"></div>
-                <div><label for="edit-userInput-${taskId}">User Input Template:</label><textarea id="edit-userInput-${taskId}">${task.promptConfig.userInputTemplate || ''}</textarea></div>
-                <div class="prompt-buttons">
-                    <button onclick="savePromptChangesToConfig('${taskId}')">Update Task in Config</button>
-                    <button class="delete-button" onclick="handleDeleteAnalyzer('${taskId}')">Delete This Analyzer Task</button>
+    function renderExamples(taskId, examples) {
+        const container = document.getElementById(`examples-container-${taskId}`);
+        container.innerHTML = '';
+        examples.forEach((example, index) => {
+            const exampleCard = document.createElement('div');
+            exampleCard.className = 'example-card';
+            exampleCard.dataset.exampleIndex = index;
+            exampleCard.innerHTML = `
+                <button class="btn-delete-example" data-task-id="${taskId}" data-example-index="${index}">×</button>
+                <h4>Example ${index + 1}</h4>
+                <div class="form-group">
+                    <label>Input Headline</label>
+                    <textarea class="example-input" data-field="input_headline">${example.input_headline || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Analysis</label>
+                    <textarea class="example-input" data-field="analysis">${example.analysis || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Rewritten Headline</label>
+                    <textarea class="example-input" data-field="rewritten_headline">${example.rewritten_headline || ''}</textarea>
                 </div>
             `;
-            renderExamplesUI(parsedExamples, document.getElementById(`examples-subsection-${taskId}`), taskId);
-         }
+            container.appendChild(exampleCard);
+        });
+    }
 
-        // MODIFIED: This function now uses the reconstruction logic
-        window.savePromptChangesToConfig = function(taskId, silent = false) {
-            if (!currentGraphConfig || !taskId) return false;
-            const taskToUpdate = findAnalyzerTask(taskId);
-            if (!taskToUpdate) { if (!silent) alert("Error: Task not found."); return false; }
+    // --- Event Handlers & State Updaters ---
+
+    function addEventListeners() {
+        document.querySelectorAll('.task-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'BUTTON') {
+                    header.parentElement.classList.toggle('expanded');
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', () => deleteTask(btn.dataset.taskId));
+        });
+
+        document.querySelectorAll('.btn-add-example').forEach(btn => {
+            btn.addEventListener('click', () => addExample(btn.dataset.taskId));
+        });
+        
+        document.querySelectorAll('.btn-delete-example').forEach(btn => {
+            btn.addEventListener('click', () => deleteExample(btn.dataset.taskId, parseInt(btn.dataset.exampleIndex, 10)));
+        });
+
+        // Update state on input change
+        document.querySelectorAll('input[type="text"], textarea').forEach(input => {
+            input.addEventListener('change', handleInputChange);
+        });
+    }
+
+    function handleInputChange(event) {
+        const input = event.target;
+        const card = input.closest('.task-card');
+        const taskId = card.dataset.taskId;
+        const analyzersNode = getAnalyzersNode();
+        if (!analyzersNode) return;
+        const task = analyzersNode.analyzerTasks.find(t => t.id === taskId);
+        
+        if (input.classList.contains('example-input')) {
+            const exampleCard = input.closest('.example-card');
+            const exampleIndex = parseInt(exampleCard.dataset.exampleIndex, 10);
+            const field = input.dataset.field;
+            task.parsedExamples[exampleIndex][field] = input.value;
+        } else {
+            const fieldId = input.id.split('-')[0];
+            switch (fieldId) {
+                case 'displayName':
+                    task.displayName = input.value;
+                    // Also update the header in real-time
+                    card.querySelector('.task-header h2').innerHTML = `<span class="arrow">▶</span> ${input.value}`;
+                    break;
+                case 'systemMessage':
+                    task.promptConfig.systemMessage = input.value;
+                    break;
+                case 'userInputTemplate':
+                    task.promptConfig.userInputTemplate = input.value;
+                    break;
+                case 'instructions':
+                    task.instructionsText = input.value;
+                    break;
+            }
+        }
+    }
+
+    function deleteTask(taskId) {
+        if (!confirm(`Are you sure you want to delete the task with ID "${taskId}"? This will also remove its related nodes and edges.`)) {
+            return;
+        }
+        const analyzersNode = getAnalyzersNode();
+        if (!analyzersNode) return;
+        analyzersNode.analyzerTasks = analyzersNode.analyzerTasks.filter(t => t.id !== taskId);
+        renderAnalyzerTasks();
+    }
+    
+    function addNewTask() {
+        const analyzersNode = getAnalyzersNode();
+        if (!analyzersNode) return;
+        const newIdBase = `new_analyzer_${Date.now()}`;
+        const newTask = {
+            id: `${newIdBase}_analyzer`,
+            displayName: "New Analyzer Task",
+            stateOutputKey: `${newIdBase}_analysis_result`,
+            promptConfig: {
+                systemMessage: "You are an AI assistant. [Describe your role]. Output ONLY valid JSON as specified.",
+                developerInstructionsTemplate: `Instruction:\n1. Analyze the input headline: "{{headlineToAnalyze}}".\n2. [Your instructions here]\n3. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: "[SOME_ENTITY] does something."\nOutput:\n{\n  "input_headline": "[SOME_ENTITY] does something.",\n  "analysis": "[Write analysis here]",\n  "rewritten_headline": "[Rewritten headline here]"\n}`,
+                userInputTemplate: "Input: \"{{headlineToAnalyze}}\""
+            }
+        };
+        analyzersNode.analyzerTasks.push(newTask);
+        renderAnalyzerTasks();
+        // Expand the new card
+        const newCard = document.querySelector(`.task-card[data-task-id="${newTask.id}"]`);
+        if(newCard) newCard.classList.add('expanded');
+    }
+
+    function addExample(taskId) {
+        const analyzersNode = getAnalyzersNode();
+        if (!analyzersNode) return;
+        const task = analyzersNode.analyzerTasks.find(t => t.id === taskId);
+        const newExample = {
+            input_headline: "",
+            analysis: "",
+            rewritten_headline: ""
+        };
+        task.parsedExamples.push(newExample);
+        renderExamples(taskId, task.parsedExamples);
+        addEventListeners(); // Re-attach listeners for new elements
+    }
+
+    function deleteExample(taskId, exampleIndex) {
+         const analyzersNode = getAnalyzersNode();
+         if (!analyzersNode) return;
+         const task = analyzersNode.analyzerTasks.find(t => t.id === taskId);
+         task.parsedExamples.splice(exampleIndex, 1);
+         renderExamples(taskId, task.parsedExamples);
+         addEventListeners(); // Re-attach listeners for new elements
+    }
+    
+    // --- Parsing and Reconstruction ---
+
+    function parseDeveloperInstructions(template) {
+        const exampleRegex = /Example\s*\d+:\s*Input:[\s\S]*?Output:\s*(\{[\s\S]*?\})/g;
+        let lastIndex = 0;
+        const examples = [];
+        let match;
+
+        while ((match = exampleRegex.exec(template)) !== null) {
+            try {
+                // The JSON is in the first capturing group
+                const exampleJson = JSON.parse(match[1]);
+                examples.push(exampleJson);
+            } catch (e) {
+                console.error("Failed to parse example JSON:", e, match[1]);
+                // Push a placeholder if parsing fails to maintain structure
+                examples.push({ error: "Failed to parse", raw: match[1] });
+            }
+            lastIndex = match.index + match[0].length;
+        }
+
+        const instructions = template.substring(0, template.search(/Example\s*1:/) || template.length).trim();
+        return { instructions, examples };
+    }
+    
+    function reconstructDeveloperInstructions(task) {
+        let result = task.instructionsText + '\n';
+        task.parsedExamples.forEach((ex, index) => {
+            // Find input and output parts to reconstruct the original format
+            const inputHeadlineString = ex.input_headline;
+            const outputJson = JSON.stringify({
+                input_headline: ex.input_headline,
+                analysis: ex.analysis,
+                rewritten_headline: ex.rewritten_headline
+            }, null, 2);
+            result += `\nExample ${index + 1}:\nInput: "${inputHeadlineString}"\nOutput:\n${outputJson}`;
+        });
+        return result.trim();
+    }
+    
+    // --- Final JSON Generation and Download ---
+
+    function downloadJson() {
+        try {
+            const finalConfig = buildFinalConfig();
+            if (!finalConfig) return; // buildFinalConfig might return null on error
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalConfig, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "updated_langgraph_config.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        } catch (error) {
+            console.error("Error preparing JSON for download:", error);
+            alert("An error occurred while preparing the configuration for download. Check the console for details.");
+        }
+    }
+
+    function buildFinalConfig() {
+        if (!getAnalyzersNode()) {
+            alert("Cannot build final configuration. The core 'parallel_analyzers_coordinator' node is missing.");
+            return null;
+        }
+        // Deep copy to work on a fresh object
+        const finalConfig = JSON.parse(JSON.stringify(configData));
+        const analyzersNode = finalConfig.nodeDefinitions.find(n => n.id === 'parallel_analyzers_coordinator');
+        const currentAnalyzers = analyzersNode.analyzerTasks;
+
+        // 1. Reconstruct developerInstructionsTemplate for all tasks
+        currentAnalyzers.forEach(task => {
+            task.promptConfig.developerInstructionsTemplate = reconstructDeveloperInstructions(task);
+            delete task.parsedExamples; // Clean up temporary data
+            delete task.instructionsText;
+        });
+
+        // 2. Define IDs of core nodes we'll be modifying
+        const PARALLEL_COORDINATOR_ID = 'parallel_analyzers_coordinator';
+        const SYNTHESIZER_ID = 'synthesizer';
+        const DATA_COLLECTOR_ID = 'data_collector_for_saver';
+
+        // 3. Remove all old reverters and their associated edges
+        const analyzerIds = new Set(currentAnalyzers.map(a => a.id));
+        const oldReverterIds = new Set();
+        finalConfig.nodeDefinitions = finalConfig.nodeDefinitions.filter(node => {
+            if (node.functionName === 'revertGenericAnalyzerHeadline') {
+                oldReverterIds.add(node.id);
+                // Keep the reverter only if its corresponding analyzer still exists
+                const analyzerResultKey = node.stateInputArgs.analyzer_result_object.replace('_result', '');
+                return analyzerIds.has(analyzerResultKey);
+            }
+            return true;
+        });
+        
+        // Remove edges connected to old reverters that were fully removed
+         finalConfig.graphEdges = finalConfig.graphEdges.filter(edge => {
+            return !(oldReverterIds.has(edge.source) || oldReverterIds.has(edge.target));
+         });
+
+        // 4. Rebuild dependencies from scratch based on current analyzers
+        const synthesizerNode = finalConfig.nodeDefinitions.find(n => n.id === SYNTHESIZER_ID);
+        const dataCollectorNode = finalConfig.nodeDefinitions.find(n => n.id === DATA_COLLECTOR_ID);
+        
+        // Reset inputs
+        synthesizerNode.stateInputArgs = { "headlineToSynthesize": "headlineToAnalyze" };
+        dataCollectorNode.stateInputArgs = { "input_headline": "input_headline", "main_flipped_headline_from_state": "flipped_headline" };
+        
+        let synthPromptAnalyses = '';
+        let synthPromptSummary = '';
+
+        currentAnalyzers.forEach((analyzer, index) => {
+            const analyzerIdBase = analyzer.id.replace('_analyzer', '');
+            const reverterId = `${analyzerIdBase}_reverter`;
+            const reverterDisplayName = `Revert ${analyzerIdBase.replace(/_/g, ' ')} Suggestion`;
+            const analysisResultKey = analyzer.stateOutputKey;
+            const revertedHeadlineKey = `${analyzerIdBase}_reverted_headline`;
             
-            // Get edited examples first to validate JSON
-            const editedExamples = getEditedExamplesFromUI(taskId, silent);
-            if (editedExamples === null) {
-                return false; // Error was already shown to user
+            // Add Reverter Node if it doesn't exist
+            if (!finalConfig.nodeDefinitions.some(n => n.id === reverterId)) {
+                finalConfig.nodeDefinitions.push({
+                    id: reverterId,
+                    displayName: reverterDisplayName,
+                    type: "local_function",
+                    functionName: "revertGenericAnalyzerHeadline",
+                    stateInputArgs: {
+                        analyzer_result_object: analysisResultKey,
+                        properNoun_map: "properNoun_map"
+                    },
+                    stateOutputKey: revertedHeadlineKey
+                });
             }
 
-            taskToUpdate.displayName = document.getElementById(`edit-displayName-${taskId}`).value;
-            if (!taskToUpdate.promptConfig) taskToUpdate.promptConfig = {}; 
-            taskToUpdate.promptConfig.systemMessage = document.getElementById(`edit-systemMessage-${taskId}`).value;
-            const devInstructionsTextOnly = document.getElementById(`edit-devInstructionsText-${taskId}`).value;
-            taskToUpdate.promptConfig.developerInstructionsTemplate = reconstructDevInstructions(devInstructionsTextOnly, editedExamples);
-            taskToUpdate.promptConfig.userInputTemplate = document.getElementById(`edit-userInput-${taskId}`).value;
+            // Add Edges if they don't exist
+            const edgeToReverter = { source: PARALLEL_COORDINATOR_ID, target: reverterId };
+            const edgeFromReverter = { source: reverterId, target: DATA_COLLECTOR_ID };
+            if (!finalConfig.graphEdges.some(e => e.source === edgeToReverter.source && e.target === edgeToReverter.target)) {
+                 finalConfig.graphEdges.push(edgeToReverter);
+            }
+            if (!finalConfig.graphEdges.some(e => e.source === edgeFromReverter.source && e.target === edgeFromReverter.target)) {
+                 finalConfig.graphEdges.push(edgeFromReverter);
+            }
+
+            // Add inputs to Synthesizer and Data Collector
+            const analysisArgKey = `analysis${index + 1}`;
+            synthesizerNode.stateInputArgs[analysisArgKey] = analysisResultKey;
+            dataCollectorNode.stateInputArgs[revertedHeadlineKey] = revertedHeadlineKey;
             
-            if (!silent) alert(`Changes for '${taskToUpdate.displayName}' captured. Click "Save Updated Config" to download.`);
-            
-            const cyNode = cy.getElementById(taskId);
-            if (cyNode && cyNode.length > 0) cyNode.data('label', taskToUpdate.displayName);
-            return true; // Success
-        };
+            // Build parts of the synthesizer prompt
+            synthPromptAnalyses += `   - ${analyzer.displayName}: {{${analysisArgKey}}}\n`;
+            synthPromptSummary += `      "${analyzer.id}_had_error": {{${analysisArgKey}.error ? true : false}}${index < currentAnalyzers.length - 1 ? ',' : ''}\n`;
+        });
         
-        // --- (Unchanged Add/Delete/Default prompt logic) ---
-        const defaultNewAnalyzerPromptConfig = {
-            systemMessage: "You are an AI assistant. Your task is to analyze the provided headline based on a specific framing perspective and then rewrite it. Output ONLY valid JSON as specified.",
-            developerInstructionsTemplate: `Instruction:\n1. Analyze the input headline: "{{headlineToAnalyze}}".\n2. Identify [SPECIFIC FRAMING ASPECT - e.g., emotional sentiment, implied bias, etc.].\n3. Based on this, rewrite the headline to [SPECIFIC GOAL - e.g., neutralize sentiment, highlight bias, offer counter-narrative]. Retain placeholders.\n4. If no significant [SPECIFIC FRAMING ASPECT] is found or a meaningful rewrite cannot be generated, \`rewritten_headline\` should be "No relevant aspect found for this type of reframing.".\n5. Your entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  "input_headline": "{{headlineToAnalyze}}",\n  "analysis_summary": "string (Brief summary of your findings regarding [SPECIFIC FRAMING ASPECT])",\n  "rewritten_headline": "string (The rewritten headline, or 'No relevant aspect found for this type of reframing.')"\n}\n\n### Examples:\n\n**Example 1:**\nInput: "Default example input for new analyzer."\nOutput:\n\`\`\`json\n{\n  "input_headline": "Default example input for new analyzer.",\n  "analysis_summary": "Initial analysis based on [SPECIFIC FRAMING ASPECT].",\n  "rewritten_headline": "Rewritten headline based on [SPECIFIC GOAL]."\n}\n\`\`\``,
-            userInputTemplate: "Analyze and reframe this headline based on [YOUR NEW ANALYSIS TYPE]: \"{{headlineToAnalyze}}\""
-        };
-        function generateNewAnalyzerId(baseName = "new_analyzer_task") { /* ... unchanged ... */ 
-            let i = 1; let newId = `${baseName}_${i}`;
-            const coordinator = findNodeDefinition(ANALYZER_COORDINATOR_ID);
-            if (!coordinator || !coordinator.analyzerTasks) return newId; 
-            const existingIds = new Set(coordinator.analyzerTasks.map(task => task.id));
-            while (existingIds.has(newId)) newId = `${baseName}_${++i}`;
-            return newId;
-        }
-        function handleAddAnalyzer() { /* ... unchanged ... */
-            if (!currentGraphConfig) { alert("Load a graph_config.json file first."); return; }
-            const coordinator = findNodeDefinition(ANALYZER_COORDINATOR_ID);
-            if (!coordinator) { alert("Error: parallel_analyzers_coordinator not found."); return; }
-            const newIdBase = prompt("Enter a short base name for the new analyzer (e.g., sentiment_analyzer):", "new_task");
-            if (!newIdBase || !newIdBase.trim()) return;
-            const newAnalyzerId = generateNewAnalyzerId(newIdBase.trim().toLowerCase().replace(/\s+/g, '_'));
-            const newReverterId = `${newAnalyzerId}_reverter`;
-            const newRevertedStateKey = `${newAnalyzerId}_reverted_headline`;
-            if (!coordinator.analyzerTasks) coordinator.analyzerTasks = [];
-            coordinator.analyzerTasks.push({ id: newAnalyzerId, displayName: `X. ${newIdBase.trim()}`, stateOutputKey: `${newAnalyzerId}_result`, promptConfig: JSON.parse(JSON.stringify(defaultNewAnalyzerPromptConfig)) });
-            currentGraphConfig.nodeDefinitions.push({ id: newReverterId, displayName: `Revert: ${newIdBase.trim()}`, type: "local_function", functionName: "revertGenericAnalyzerHeadline", stateInputArgs: { analyzer_result_object: `${newAnalyzerId}_result`, "properNoun_map": "properNoun_map" }, stateOutputKey: newRevertedStateKey });
-            currentGraphConfig.graphEdges.push({ source: ANALYZER_COORDINATOR_ID, target: newReverterId });
-            currentGraphConfig.graphEdges.push({ source: newReverterId, target: DATA_COLLECTOR_ID });
-            const collectorNode = findNodeDefinition(DATA_COLLECTOR_ID);
-            if (collectorNode && collectorNode.stateInputArgs) collectorNode.stateInputArgs[`${newAnalyzerId}_reverted_headline_to_save`] = newRevertedStateKey;
-            initializeCytoscape(currentGraphConfig);
-            const taskNodeInCy = cy.getElementById(newAnalyzerId); if(taskNodeInCy) taskNodeInCy.trigger('tap');
-        }
-        window.handleDeleteAnalyzer = function(taskIdToDelete) { /* ... unchanged ... */
-            if (!currentGraphConfig || !taskIdToDelete) return; if (!confirm(`Delete "${taskIdToDelete}"?`)) return;
-            const coordinator = findNodeDefinition(ANALYZER_COORDINATOR_ID); if (!coordinator) return;
-            const taskIndex = coordinator.analyzerTasks.findIndex(task => task.id === taskIdToDelete); if(taskIndex === -1) return;
-            const reverterIdToDelete = `${taskIdToDelete}_reverter`;
-            coordinator.analyzerTasks.splice(taskIndex, 1);
-            currentGraphConfig.nodeDefinitions = currentGraphConfig.nodeDefinitions.filter(n => n.id !== reverterIdToDelete);
-            currentGraphConfig.graphEdges = currentGraphConfig.graphEdges.filter(edge => edge.source !== reverterIdToDelete && edge.target !== reverterIdToDelete);
-            const collectorNode = findNodeDefinition(DATA_COLLECTOR_ID);
-            if (collectorNode && collectorNode.stateInputArgs) Object.keys(collectorNode.stateInputArgs).forEach(k => { if (collectorNode.stateInputArgs[k] === `${taskIdToDelete}_reverted_headline`) delete collectorNode.stateInputArgs[k]; });
-            initializeCytoscape(currentGraphConfig); showDefaultPromptEditorState();
-        };
+        // 5. Reconstruct the synthesizer prompt
+        const synthPromptTemplate = synthesizerNode.promptConfig.developerInstructionsTemplate;
+        const newSynthPrompt = synthPromptTemplate
+            .replace(/2\. Review the provided analyses:[\s\S]*?3\. Based on these/, `2. Review the provided analyses:\n${synthPromptAnalyses}3. Based on these`)
+            .replace(/"analysis_summary_used":\s*\{[\s\S]*?\}/, `"analysis_summary_used": {\n${synthPromptSummary}  }`);
+
+        synthesizerNode.promptConfig.developerInstructionsTemplate = newSynthPrompt;
+
+        return finalConfig;
+    }
 
     </script>
 </body>
