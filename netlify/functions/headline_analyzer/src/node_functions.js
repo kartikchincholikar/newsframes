@@ -155,8 +155,8 @@ async function revertGenericAnalyzerHeadline(state, nodeConfig) {
     
     // --- CHANGE IS HERE ---
     // We've removed the configurable path. The function now correctly and explicitly
-    // expects the key to always be 'analyzer_alternative_headline_with_placeholders'.
-    const analyzerHeadlineKey = 'analyzer_alternative_headline_with_placeholders';
+    // expects the key to always be 'rewritten_headline'.
+    const analyzerHeadlineKey = 'rewritten_headline';
 
     const analyzerResultObject = resolvePath(state, analyzerResultObjectKey);
     const properNounMap = resolvePath(state, properNounMapKey, {});
