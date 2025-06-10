@@ -50,7 +50,7 @@
           "stateOutputKey": "speculative_reframing_result",
           "promptConfig": {
             "systemMessage": "You are an expert in Journalism and Media Studies. You specialize in rewriting news headlines with additional plausible, but unlikely, speculative information, inspired by Russell's Teapot. Write clearly and plausibly. Respond ONLY in valid JSON format as specified.",
-            "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Understand the headline, the agent/patient roles, verbs, and study the message being conveyed to the audience.                          \n3. Rewrite the headline by adding extra speculative information, speculative explainations and backstories. This additions could be physically plausible, but should be unlikely. The additions can by jocular, dodgy, blimey, serious, devastating, mysterious, clickbaity and not necessarily paranoid. Place these speculative additon in parentheses. Retain the placeholders in the input headline.\n4  Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"Dog attacks 4-year-old causing injuries\"\nOutput:\n{\n  \"input_headline\": \"Dog attacks 4-year-old causing injuries\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Dog attacks 4-year-old causing injuries (perhaps because the child had been unknowingly tormenting the dog's hidden puppies for weeks)\"\n}",
+            "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Understand the headline, the agent/patient roles, verbs, and study the message being conveyed to the audience.                          \n3. Rewrite the headline by adding extra speculative information, speculative explainations and backstories. This additions could be physically plausible, but should be unlikely. The additions can by jocular, dodgy, blimey, serious, devastating, mysterious, clickbaity and not necessarily paranoid. Place these speculative additon in parentheses. Retain the placeholders in the input headline.\n4  Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"Dog attacks 4-year-old causing injuries\"\nOutput:\n{\n  \"input_headline\": \"Dog attacks 4-year-old causing injuries\",\n  \"analysis\": \"[Write analysis here]\",\n  \"rewritten_headline\": \"Dog attacks 4-year-old causing injuries (perhaps because the child had been unknowingly tormenting the dog's hidden puppies for weeks)\"\n}",
             "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
           }
         },
@@ -59,7 +59,7 @@
           "displayName": "1c. Euphemism Analysis & Literal Flip",
           "stateOutputKey": "euphemism_analysis_result",
           "promptConfig": {
-            "systemMessage": "You are an expert in Journalism and Media Studies. Your job is to study news headlines (which may contain placeholders like [PERSON_A]) to detect euphemisms, explain their impact, AND rewrite the headline using direct, literal language. Output ONLY valid JSON as specified.",
+            "systemMessage": "You are an expert in Journalism and Media Framing. Media framing refers to the deliberate presentation of information in order to elicit a desired response or shift in reader’s attitude. Your job is to study news headlines (which may contain placeholders like [PERSON_A]) to detect euphemisms, explain their impact, AND rewrite the headline using direct, literal language. Output ONLY valid JSON as specified.",
             "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Detect euphemistic, diplomatic terms or phrases, which downplay, white wash or use Colonial Administrative Language in the headline .   \n3. For each identified euphemistic, diplomatic, or Colonial Administrative term analyze what is being downplayed or minimized. Place any additional information added in parentheses. Rewrite the entire headline by replacing all impactful euphemisms with their direct, literal crude meanings. Retain the placeholders in the input headline.          \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"[MILITARY_UNIT] neutralized targets in [AREA_X] during a security operation.\"\nOutput:\n{\n  \"input_headline\": \"[MILITARY_UNIT] neutralized targets in [AREA_X] during a security operation.\",\n  \"analysis\": \"[Write analysis here]\",\n  \"rewritten_headline\": \"[MILITARY_UNIT] killed people or destroyed objectives in [AREA_X] during a military offensive.\"\n}",
             "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
           }
@@ -70,7 +70,7 @@
           "stateOutputKey": "episodic_thematic_analysis_result",
           "promptConfig": {
             "systemMessage": "You are an expert in media framing analysis. Analyze news snippets to identify whether they use episodic or thematic framing and suggest a reframing that might include placeholders. Output ONLY valid JSON as specified.",
-            "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if the headline uses thematic or episodic news framing to get a point accross.                                                \n3. If thematic framing is detected, convert it and rewrite the headline using episodic framing. If episodic framing is detected, convert it and rewrite the headline using thematic framing. Place any additional information added in parentheses. Retain the placeholders in the input headline.                                                                                                      \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\"\nOutput:\n{\n  \"input_headline\": \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Widespread malnutrition, exacerbated by drought and aid shortages in places like [CITY_A], continues to claim young lives across the Horn of Africa, highlighting a systemic crisis.\"\n}",
+            "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if the headline uses thematic or episodic news framing to get a point accross.                                                \n3. If thematic framing is detected, convert it and rewrite the headline using episodic framing. If episodic framing is detected, convert it and rewrite the headline using thematic framing. Place any additional information added in parentheses. Retain the placeholders in the input headline.                                                                                                      \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\"\nOutput:\n{\n  \"input_headline\": \"In [CITY_A], a 1-year-old boy died from complications of malnutrition.\",\n  \"analysis\": \"[Write analysis here]\",\n  \"rewritten_headline\": \"Widespread malnutrition, exacerbated by drought and aid shortages in places like [CITY_A], continues to claim young lives across the Horn of Africa, highlighting a systemic crisis.\"\n}",
             "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
           }
         },
@@ -80,66 +80,11 @@
           "stateOutputKey": "violence_type_analysis_result",
           "promptConfig": {
             "systemMessage": "You are an expert in media news framing. Your job is analyze a headline contains spectacular violence (sudden, dramatic harm such as attacks, riots, murders). If spectacular violence IS found, you will speculate a plausible underlying systemic/structural cause and rewrite the headline appending this cause in parentheses. Output ONLY valid JSON as specified.",
-            "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if the headlines contains spectacular violence (sudden, dramatic harm such as attacks, riots, murders).                       \n3. If spectacular violence is found, you will speculate a plausible underlying systemic/structural cause and rewrite the headline appending this cause in parentheses. If spectacular violence is not found: Indicate this clearly in the output. Retain the placeholders in the input headline.                                                                                                        \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"Rioters smash downtown storefronts in [CITY_B].\"\nOutput:\n{\n  \"input_headline\": \"Rioters smash downtown storefronts in [CITY_B].\",\n  \"analysis\": \"[Write analysis here]\", \n  \"rewritten_headline\": \"Rioters smash downtown storefronts in [CITY_B] (amid rising youth unemployment and a lack of community services).\"\n}",
+            "developerInstructionsTemplate": "Instruction:\n1. Carefully parse and analyze keywords, linguistic indicators, agent/patient roles, and contextual elements the input headline: \"{{headlineToAnalyze}}\".\n2. Determine if the headlines contains spectacular violence (sudden, dramatic harm such as attacks, riots, murders).                       \n3. If spectacular violence is found, you will speculate a plausible underlying systemic/structural cause and rewrite the headline appending this cause in parentheses. If spectacular violence is not found: Indicate this clearly in the output. Retain the placeholders in the input headline.                                                                                                        \n4. Your entire output MUST be a single, valid JSON object.\n\nExample 1:\nInput: \"Rioters smash downtown storefronts in [CITY_B].\"\nOutput:\n{\n  \"input_headline\": \"Rioters smash downtown storefronts in [CITY_B].\",\n  \"analysis\": \"[Write analysis here]\",\n  \"rewritten_headline\": \"Rioters smash downtown storefronts in [CITY_B] (amid rising youth unemployment and a lack of community services).\"\n}",
             "userInputTemplate": "Input: \"{{headlineToAnalyze}}\""
           }
         }
       ]
-    },
-    {
-      "id": "speculative_reverter",
-      "displayName": "Revert Speculative Headline",
-      "type": "local_function",
-      "functionName": "revertGenericAnalyzerHeadline",
-      "stateInputArgs": {
-        "analyzer_result_object": "speculative_reframing_result",
-        "properNoun_map": "properNoun_map"
-      },
-      "stateOutputKey": "speculative_reverted_headline"
-    },
-    {
-      "id": "episodic_thematic_reverter",
-      "displayName": "Revert episodic_thematic Suggestion",
-      "type": "local_function",
-      "functionName": "revertGenericAnalyzerHeadline",
-      "stateInputArgs": {
-        "analyzer_result_object": "episodic_thematic_analysis_result",
-        "properNoun_map": "properNoun_map"
-      },
-      "stateOutputKey": "episodic_thematic_reverted_headline"
-    },
-    {
-      "id": "violence_type_reverter",
-      "displayName": "Revert Violence Type Headline",
-      "type": "local_function",
-      "functionName": "revertGenericAnalyzerHeadline",
-      "stateInputArgs": {
-        "analyzer_result_object": "violence_type_analysis_result",
-        "properNoun_map": "properNoun_map"
-      },
-      "stateOutputKey": "violence_type_reverted_headline"
-    },
-    {
-      "id": "cognitive_frames_reverter",
-      "displayName": "Revert Cognitive Type Headline",
-      "type": "local_function",
-      "functionName": "revertGenericAnalyzerHeadline",
-      "stateInputArgs": {
-        "analyzer_result_object": "cognitive_frames_analysis_result",
-        "properNoun_map": "properNoun_map"
-      },
-      "stateOutputKey": "cognitive_frames_reverted_headline"
-    },
-    {
-      "id": "euphemism_reverter",
-      "displayName": "Revert Euphemism Type Headline",
-      "type": "local_function",
-      "functionName": "revertGenericAnalyzerHeadline",
-      "stateInputArgs": {
-        "analyzer_result_object": "euphemism_analysis_result",
-        "properNoun_map": "properNoun_map"
-      },
-      "stateOutputKey": "euphemism_reverted_headline"
     },
     {
       "id": "synthesizer",
@@ -162,7 +107,7 @@
       },
       "promptConfig": {
         "systemMessage": "You are an expert in Journalism and Media Studies specializing in news framing. Your task is to generate a 'flipped_headline' that conveys the SAME CORE FACTS from the original headline but with an opposite (flipped) news framing, based on the provided analyses. Output ONLY valid JSON as specified.",
-        "developerInstructionsTemplate": "Instruction:\n1. Study the original headline: \"{{headlineToSynthesize}}\".\n2. Review the provided analyses:\n   - Cognitive News Framing: {{analysis1}}\n   - Speculative News Framing : {{analysis2}}\n   - Euphemistic News Framing: {{analysis3}}\n   - Episodic/Thematic News Framing: {{analysis4}}\n   - Spectacular/Systemic Violence News Framing: {{analysis5}}\n3. Based on these, choose one or more analyses that provide strong evidence of a particular news frame in the original headline.\n4. Generate a \"flipped_headline\" that reverses or significantly alters this news framing while ATTEMPTING TO PRESERVE THE CORE FACTUAL INFORMATION.\n5. The flipped headline should ideally use the same placeholders if they were present in \"{{headlineToSynthesize}}\".\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"input_headline_processed\": \"{{headlineToSynthesize}}\",\n  \"flipped_headline\": \"string (The new headline with flipped framing, may contain placeholders)\",\n  \"reasoning_for_flip\": \"string (Brief explanation of which analysis inspired the flip and how the frame was altered)\",\n  \"analysis_summary_used\": { \n      \"cognitive_frames_had_error\": {{analysis1.error ? true : false}},\n      \"speculative_reframing_had_error\": {{analysis2.error ? true : false}},\n      \"euphemism_analysis_had_error\": {{analysis3.error ? true : false}},\n      \"episodic_thematic_analysis_had_error\": {{analysis4.error ? true : false}},\n      \"violence_type_analysis_had_error\": {{analysis5.error ? true : false}}\n  }\n}\nExample:\nInput Headline: \"[LEADER_X] announces decisive action against protest.\"\nCognitive Frame Analysis might indicate \"Control/Order\" frame.\nFlipped Headline might be: \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\"\n\nOutput:\n{\n  \"input_headline_processed\": \"[LEADER_X] announces decisive action against protest.\",\n  \"flipped_headline\": \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\",\n  \"reasoning_for_flip\": \"Flipped from a 'Control/Order' frame implied by 'decisive action' to a 'Concern/Rights' frame by focusing on community perspective and 'escalates measures'.\",\n  \"analysis_summary_used\": { \"cognitive_frames_had_error\": false, \"speculative_reframing_had_error\": false, \"euphemism_analysis_had_error\": false, \"episodic_thematic_analysis_had_error\": false, \"violence_type_analysis_had_error\": false }\n}",
+        "developerInstructionsTemplate": "Instruction:\n1. Study the original headline: \"{{headlineToSynthesize}}\".\n2. Review the provided analyses:\n   - 1a. Equivalence Framing: {{analysis1}}\n   - 1b. Speculative Reframing: {{analysis2}}\n   - 1c. Euphemism Analysis & Literal Flip: {{analysis3}}\n   - 1d. episodic_thematic Analysis (Episodic/Thematic): {{analysis4}}\n   - 1e. Violence Type Analysis & Systemic Link: {{analysis5}}\n3. Based on these, choose one or more analyses that provide strong evidence of a particular news frame in the original headline.\n4. Generate a \"flipped_headline\" that reverses or significantly alters this news framing while ATTEMPTING TO PRESERVE THE CORE FACTUAL INFORMATION.\n5. The flipped headline should ideally use the same placeholders if they were present in \"{{headlineToSynthesize}}\".\nYour entire output MUST be a single, valid JSON object.\n\nRequired JSON Output Schema:\n{\n  \"input_headline_processed\": \"{{headlineToSynthesize}}\",\n  \"flipped_headline\": \"string (The new headline with flipped framing, may contain placeholders)\",\n  \"reasoning_for_flip\": \"string (Brief explanation of which analysis inspired the flip and how the frame was altered)\",\n  \"analysis_summary_used\": {\n      \"cognitive_frames_analyzer_had_error\": {{analysis1.error ? true : false}},\n      \"speculative_reframing_analyzer_had_error\": {{analysis2.error ? true : false}},\n      \"euphemism_analyzer_had_error\": {{analysis3.error ? true : false}},\n      \"episodic_thematic_analyzer_had_error\": {{analysis4.error ? true : false}},\n      \"violence_type_analyzer_had_error\": {{analysis5.error ? true : false}}\n  }},\n      \"speculative_reframing_had_error\": {{analysis2.error ? true : false}},\n      \"euphemism_analysis_had_error\": {{analysis3.error ? true : false}},\n      \"episodic_thematic_analysis_had_error\": {{analysis4.error ? true : false}},\n      \"violence_type_analysis_had_error\": {{analysis5.error ? true : false}}\n  }\n}\nExample:\nInput Headline: \"[LEADER_X] announces decisive action against protest.\"\nCognitive Frame Analysis might indicate \"Control/Order\" frame.\nFlipped Headline might be: \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\"\n\nOutput:\n{\n  \"input_headline_processed\": \"[LEADER_X] announces decisive action against protest.\",\n  \"flipped_headline\": \"Community members express concerns as [LEADER_X] escalates measures against public assembly.\",\n  \"reasoning_for_flip\": \"Flipped from a 'Control/Order' frame implied by 'decisive action' to a 'Concern/Rights' frame by focusing on community perspective and 'escalates measures'.\",\n  \"analysis_summary_used\": { \"cognitive_frames_had_error\": false, \"speculative_reframing_had_error\": false, \"euphemism_analysis_had_error\": false, \"episodic_thematic_analysis_had_error\": false, \"violence_type_analysis_had_error\": false }\n}",
         "userInputTemplate": "Synthesize a flipped headline for: \"{{headlineToSynthesize}}\" using the provided analyses."
       }
     },
@@ -184,11 +129,11 @@
       "stateInputArgs": {
         "input_headline": "input_headline",
         "main_flipped_headline_from_state": "flipped_headline",
-        "speculative_reverted_headline": "speculative_reverted_headline",
-        "episodic_thematic_reverted_headline": "episodic_thematic_reverted_headline",
-        "violence_type_reverted_headline": "violence_type_reverted_headline",
         "cognitive_frames_reverted_headline": "cognitive_frames_reverted_headline",
-        "euphemism_reverted_headline": "euphemism_reverted_headline"
+        "speculative_reframing_reverted_headline": "speculative_reframing_reverted_headline",
+        "euphemism_reverted_headline": "euphemism_reverted_headline",
+        "episodic_thematic_reverted_headline": "episodic_thematic_reverted_headline",
+        "violence_type_reverted_headline": "violence_type_reverted_headline"
       },
       "stateOutputKey": "data_package_for_saver"
     },
@@ -201,32 +146,67 @@
         "packaged_data": "data_package_for_saver"
       },
       "stateOutputKey": "db_save_status"
+    },
+    {
+      "id": "cognitive_frames_reverter",
+      "displayName": "Revert cognitive frames Suggestion",
+      "type": "local_function",
+      "functionName": "revertGenericAnalyzerHeadline",
+      "stateInputArgs": {
+        "analyzer_result_object": "cognitive_frames_analysis_result",
+        "properNoun_map": "properNoun_map"
+      },
+      "stateOutputKey": "cognitive_frames_reverted_headline"
+    },
+    {
+      "id": "speculative_reframing_reverter",
+      "displayName": "Revert speculative reframing Suggestion",
+      "type": "local_function",
+      "functionName": "revertGenericAnalyzerHeadline",
+      "stateInputArgs": {
+        "analyzer_result_object": "speculative_reframing_result",
+        "properNoun_map": "properNoun_map"
+      },
+      "stateOutputKey": "speculative_reframing_reverted_headline"
+    },
+    {
+      "id": "euphemism_reverter",
+      "displayName": "Revert euphemism Suggestion",
+      "type": "local_function",
+      "functionName": "revertGenericAnalyzerHeadline",
+      "stateInputArgs": {
+        "analyzer_result_object": "euphemism_analysis_result",
+        "properNoun_map": "properNoun_map"
+      },
+      "stateOutputKey": "euphemism_reverted_headline"
+    },
+    {
+      "id": "episodic_thematic_reverter",
+      "displayName": "Revert episodic thematic Suggestion",
+      "type": "local_function",
+      "functionName": "revertGenericAnalyzerHeadline",
+      "stateInputArgs": {
+        "analyzer_result_object": "episodic_thematic_analysis_result",
+        "properNoun_map": "properNoun_map"
+      },
+      "stateOutputKey": "episodic_thematic_reverted_headline"
+    },
+    {
+      "id": "violence_type_reverter",
+      "displayName": "Revert violence type Suggestion",
+      "type": "local_function",
+      "functionName": "revertGenericAnalyzerHeadline",
+      "stateInputArgs": {
+        "analyzer_result_object": "violence_type_analysis_result",
+        "properNoun_map": "properNoun_map"
+      },
+      "stateOutputKey": "violence_type_reverted_headline"
     }
   ],
   "graphEdges": [
     {
       "source": "properNoun_replacer1",
       "target": "parallel_analyzers_coordinator"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "cognitive_frames_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "euphemism_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "speculative_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "episodic_thematic_reverter"
-    },
-    {
-      "source": "parallel_analyzers_coordinator",
-      "target": "violence_type_reverter"
     },
     {
       "source": "parallel_analyzers_coordinator",
@@ -241,32 +221,52 @@
       "target": "data_collector_for_saver"
     },
     {
-      "source": "cognitive_frames_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "euphemism_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "speculative_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "episodic_thematic_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
-      "source": "violence_type_reverter",
-      "target": "data_collector_for_saver"
-    },
-    {
       "source": "data_collector_for_saver",
       "target": "saver"
     },
     {
       "source": "saver",
       "target": "END"
+    },
+    {
+      "source": "parallel_analyzers_coordinator",
+      "target": "cognitive_frames_reverter"
+    },
+    {
+      "source": "cognitive_frames_reverter",
+      "target": "data_collector_for_saver"
+    },
+    {
+      "source": "parallel_analyzers_coordinator",
+      "target": "speculative_reframing_reverter"
+    },
+    {
+      "source": "speculative_reframing_reverter",
+      "target": "data_collector_for_saver"
+    },
+    {
+      "source": "parallel_analyzers_coordinator",
+      "target": "euphemism_reverter"
+    },
+    {
+      "source": "euphemism_reverter",
+      "target": "data_collector_for_saver"
+    },
+    {
+      "source": "parallel_analyzers_coordinator",
+      "target": "episodic_thematic_reverter"
+    },
+    {
+      "source": "episodic_thematic_reverter",
+      "target": "data_collector_for_saver"
+    },
+    {
+      "source": "parallel_analyzers_coordinator",
+      "target": "violence_type_reverter"
+    },
+    {
+      "source": "violence_type_reverter",
+      "target": "data_collector_for_saver"
     }
   ]
 }
