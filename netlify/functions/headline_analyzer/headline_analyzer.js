@@ -127,7 +127,7 @@ exports.handler = async function(event, context) { // Added context for complete
         
         // Explicitly ensure all reverted headlines and their details are in payload if they exist in finalState
         const revertedHeadlines = [
-            'speculative_reverted_headline', 'episodic_thematic_reverted_headline', 'violence_type_reverted_headline','cognitive_frames_reverted_headline', 'euphemism_reverted_headline',
+            'speculative_reframing_reverted_headline', 'episodic_thematic_reverted_headline', 'violence_type_reverted_headline','cognitive_frames_reverted_headline', 'euphemism_reverted_headline',
             // Add more state keys for reverted headlines if you have them
         ];
         const reverterDetails = [

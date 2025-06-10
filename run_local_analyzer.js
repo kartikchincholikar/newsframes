@@ -46,8 +46,8 @@ async function runAnalysis(headline) {
         console.log("Main Flipped Headline (Synthesized):", finalState.flipped_headline || "N/A");
         console.log("-----------------------------------");
 
-        if (finalState.speculative_reverted_headline) {
-            console.log("Speculative Reverted Headline:", finalState.speculative_reverted_headline);
+        if (finalState.speculative_reframing_reverted_headline) {
+            console.log("Speculative Reverted Headline:", finalState.speculative_reframing_reverted_headline);
         }
         if (finalState.episodic_thematic_reverted_headline) {
             console.log("episodic_thematic Reverted Suggestion:", finalState.episodic_thematic_reverted_headline);

@@ -16,7 +16,7 @@
  * @property {object | {error: string, rawContent?: string}} [violence_type_analysis_result]
  *
  * // Reverted headlines from individual analyzers and their reverter details
- * @property {string} [speculative_reverted_headline] - Final reverted headline from the speculative rephrasing analyzer.
+ * @property {string} [speculative_reframing_reverted_headline] - Final reverted headline from the speculative rephrasing analyzer.
  * @property {object} [speculative_reverter_details] - Details from the speculative_reverter node.
  *
  * @property {string} [episodic_thematic_reverted_headline] - Final reverted headline from the episodic_thematic analyzer.
@@ -68,7 +68,7 @@ const appStateChannels = {
 
     // Final reverted headlines
     flipped_headline: { value: (x, y) => y, default: () => undefined }, // Main one from synthesizer path
-    speculative_reverted_headline: { value: (x, y) => y, default: () => undefined },
+    speculative_reframing_reverted_headline: { value: (x, y) => y, default: () => undefined },
     episodic_thematic_reverted_headline: { value: (x, y) => y, default: () => undefined },
     violence_type_reverted_headline: { value: (x, y) => y, default: () => undefined },
     cognitive_frames_reverted_headline: { value: (x, y) => y, default: () => undefined },
