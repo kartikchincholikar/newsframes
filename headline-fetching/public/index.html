@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rival Country News Headlines</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Rival Country News Headlines</h1>
+
+        <div class="controls">
+            <div class="select-group">
+                <label for="country1">Select Country 1:</label>
+                <select id="country1"></select>
+            </div>
+            
+            <div class="select-group">
+                <label for="country2">Select Country 2:</label>
+                <select id="country2"></select>
+            </div>
+
+            <button id="fetchBtn">Fetch Headlines</button>
+
+            <div class="toggle-group">
+                <input type="checkbox" id="filterToggle">
+                <label for="filterToggle">Only show headlines that mention the rival country</label>
+            </div>
+        </div>
+
+        <div id="loading" class="hidden">Loading...</div>
+        
+        <div class="results-container">
+            <div id="results1" class="country-results"></div>
+            <div id="results2" class="country-results"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

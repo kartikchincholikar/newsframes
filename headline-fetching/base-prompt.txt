@@ -1,0 +1,19 @@
+Okay good. 
+I now want you write .js code to do the following:
+
+- I want you to create a simple UI, with two drop downs. Using each drop down I can select a country. I select countries from both drop downs, to define the rival pair of countries. 
+- After selecting a rival pair, I will click on a button, which will fetch and display headlines from the various .rss feeds for each rival pair.
+- We should Display a headline, if it contains the name of the rival country in the headline. In other words, please filter and display headlines which contain the rival country's name in the headline. This feature is optional, and I should be able to toggle it on/off.
+
+In the backend:
+Have a .csv file for each country, which stores the URLs to the .rss news feeds for that country. So in case in the future two different countries go to war, I should be able to define a new rival pair. In the future I will update these .csv files to prepare a comprehensive list of URL to .rss feeds for each country.
+Please create the required directory structure. 
+
+
+About Parsing:
+If there is an error in parsing a URL, please display the error and catch it. Then try other urls for that country.
+
+
+According to .rss specifcation, for each .rss feed:
+inside <channel> there are multiple <item> s - each representing a news headline.
+Inside <item> there is the <title> which contains the actual headline. We want to fetch this for each <item> for each .rss feed, of each county, of the rival pair - and then display the headlines which contain the name of the rival country in the headline (if this option is turned on)
