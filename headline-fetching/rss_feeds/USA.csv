@@ -1,3 +1,16 @@
 url
 https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+https://rss.nytimes.com/services/xml/rss/nyt/US.xml
 https://feeds.washingtonpost.com/rss/world
+https://feeds.washingtonpost.com/rss/national
+https://moxie.foxnews.com/google-publisher/us.xml
+https://moxie.foxnews.com/google-publisher/world.xml
+https://feeds.content.dowjones.io/public/rss/RSSUSnews
+https://feeds.content.dowjones.io/public/rss/RSSWorldNews
+https://www.latimes.com/world-nation/rss2.0.xml
+http://rss.cnn.com/rss/cnn_world.rss
+http://rss.cnn.com/rss/cnn_us.rss
+https://search.cnbc.com/rs/search/combinedcms/view.xml
+https://search.cnbc.com/rs/search/combinedcms/view.xml
+https://news.google.com/rss/search?q=when:24h allinurl:apnews.com
+https://news.google.com/rss/search?q=when:24h allinurl:bloomberg.com

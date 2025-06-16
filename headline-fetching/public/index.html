@@ -3,40 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rival Country News Headlines</title>
+    <title>Global News Explorer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Rival Country News Headlines</h1>
+        <header>
+            <h1>Global News Explorer</h1>
+        </header>
 
-        <div class="controls">
-            <div class="select-group">
-                <label for="country1">Select Country 1:</label>
-                <select id="country1"></select>
+        <section class="controls-panel">
+            <div class="country-selector-wrapper">
+                <label for="country-search">Select Countries</label>
+                <div class="tag-container" id="tag-container">
+                    <!-- Selected country tags will appear here -->
+                    <input type="text" id="country-search" placeholder="Type to add a country...">
+                </div>
+                <div class="suggestions-box" id="suggestions-box"></div>
             </div>
-            
-            <div class="select-group">
-                <label for="country2">Select Country 2:</label>
-                <select id="country2"></select>
-            </div>
+            <button id="fetch-btn" class="primary-btn">Fetch Headlines</button>
+        </section>
 
-            <button id="fetchBtn">Fetch Headlines</button>
+        <main class="main-content hidden" id="main-content">
+            <aside class="sidebar">
+                <h2>Filter & Sort</h2>
+                <div class="filter-group">
+                    <label for="manual-search">Search Headlines</label>
+                    <input type="text" id="manual-search" placeholder="Filter by keyword...">
+                </div>
 
-            <div class="toggle-group">
-                <input type="checkbox" id="filterToggle">
-                <label for="filterToggle">Only show headlines that mention the rival country</label>
-            </div>
-        </div>
+                <div class="filter-group">
+                    <label>Sort By Date</label>
+                    <div class="sort-options">
+                        <button class="sort-btn active" data-sort="newest">Newest First</button>
+                        <button class="sort-btn" data-sort="oldest">Oldest First</button>
+                    </div>
+                </div>
 
-        <div id="loading" class="hidden">Loading...</div>
+                <div class="filter-group">
+                    <label>Top Keywords (Facets)</label>
+                    <div class="facet-cloud" id="facet-cloud">
+                        <!-- Keyword facets will be generated here -->
+                    </div>
+                </div>
+            </aside>
+
+            <section class="results-area">
+                <div class="status-bar" id="status-bar">
+                    <!-- Status messages like 'Loading...' or 'Showing X of Y headlines' -->
+                </div>
+                <div class="results-grid" id="results-grid">
+                    <!-- Headline columns will be generated here -->
+                </div>
+            </section>
+        </main>
         
-        <div class="results-container">
-            <div id="results1" class="country-results"></div>
-            <div id="results2" class="country-results"></div>
-        </div>
+        <div class="error-display" id="error-display"></div>
     </div>
 
+    <!-- External Libraries -->
+    <script src="https://unpkg.com/compromise"></script>
+    
+    <!-- Local Script -->
     <script src="script.js"></script>
 </body>
 </html>
