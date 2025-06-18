@@ -1,0 +1,38 @@
+okay, now we want to overhaul this project with the following changes:
+the main, .csv files for each country will remain the same. Hower we have to change the two sections (RIVAL COUNTRY HEADLINES and SINGLE COUNTRY ANALYSIS). Now we will have only one section.
+But first, we need to make a few changes to what we are fetching from the .rss files. We are only fetching the 'title' for each 'item' right now. But now, we also want to fetch the 'title' of the 'channel'. This title will be Name of the News Source we are fetching the news from. This will be useful to cite the source. Also fetch the 'link' and 'description' for each item. Keep the description if it contains text, if it contains html or links - keep the description empty.
+Also record and analyze the pubDate which is usually in this format: <pubDate>Fri, 25 Apr 2025 16:26:13 +0530</pubDate>. We will use the data of publication, while clustering.
+As we said before, we will have only one section. In this section, the user can select N number of countries using a drop down(1,2,3 ..). If the user selects three countries, 3 columns will show up. Then if the user removes one country, then the column of that country will disappear.
+For each country(column), every row will contain will contain a headline, and the source will also be displayed in a small font.
+Okay now here is a big change - remove the option to toggle to only display the headlines containing the rival country's name. Also remove the clustering we were doing before. Instead we want to do the following keyword based filtering:
+When N number of countries are selected, and when the user click a button called 'fetch', we will fetch headlines from all the .rss feeds of the selected countries. We want to then analyze all these headlines (their title and description(if it contains text), and create the following filtering mechanism:
+Faceted Search or Faceted Navigation
+A user interface paradigm that allows users to filter a set of items (like sentences or products) by selecting from multiple categories or tags (facets). It's widely used in news filtering.
+🔹 Underlying NLP Task:
+Keyword Extraction or Unsupervised Term Frequency Analysis
+Automatically analyzing sentences to extract commonly occurring or meaningful words. Techniques involved:
+TF (Term Frequency)
+TF-IDF (Term Frequency-Inverse Document Frequency)
+RAKE (Rapid Automatic Keyword Extraction)
+YAKE, KeyBERT (more advanced)
+🔹 Search Mechanism:
+Boolean Tag Filtering / Intersection Filtering
+If a user selects both "school" and "streaming", the system shows only the sentences containing both terms — an AND filter operation. (Sometimes OR filtering is also offered.)
+🔹 Technical Stack Terms:
+If building this:
+Elasticsearch: A popular tool that supports full-text search with faceted filtering out of the box.
+Inverted Index: The data structure behind fast keyword search.
+Tag Cloud: UI component showing frequency-based tags.
+Search UI Frameworks: Like Algolia, Meilisearch, or Apache Solr (which also support facets).
+🔹 Summary:
+You're looking for "Faceted Search with Keyword Extraction", implemented via tag-based filtering using keyword frequency analysis.
+IMPORTANT: The user should also be able to do a manual filtering, by typing in keywords - to display only headlines which contain those keywords.
+Ensure the UI/UX is smooth, yet simple - and only has essentials. The theme should be grey scale.
+Okay, please now tell me if you've understood this task. Also ask me any clarifications if you require them.
+
+Is this tag-based approach what you have in mind for a "smooth UI/UX"? yes
+Please first filter out only proper nouns, nouns, and verbs from the title and description - and then do TF-IDF
+Yes
+Yes, use pubData to do the sorting
+also use axios to robustly simulate a browser to prevent 403 error. If we get 403 response from a .rss url anyways, please handle them so that the entire process does not fail.
+Now, please begin coding and write entire files

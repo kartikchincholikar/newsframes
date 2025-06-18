@@ -183,10 +183,15 @@ document.addEventListener('DOMContentLoaded', () => {
             year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
         });
 
+        // item.innerHTML = `
+        //     <a href="${headline.link}" target="_blank" rel="noopener noreferrer">${headline.title}</a>
+        //     <span class="headline-source">${headline.source} - <span class="headline-date">${formattedDate}</span></span>
+        //     ${headline.description ? `<p class="headline-description">${headline.description}</p>` : ''}
+        // `;
+
         item.innerHTML = `
             <a href="${headline.link}" target="_blank" rel="noopener noreferrer">${headline.title}</a>
             <span class="headline-source">${headline.source} - <span class="headline-date">${formattedDate}</span></span>
-            ${headline.description ? `<p class="headline-description">${headline.description}</p>` : ''}
         `;
         return item;
     }
