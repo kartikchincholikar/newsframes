@@ -137,15 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             const termFrequencies = {};
             const docFrequencies = {};
-            const docs = appState.allHeadlines.map(h => `${h.title} ${h.description}`);
-            
+            // const docs = appState.allHeadlines.map(h => `${h.title} ${h.description}`); TODO: include first paragraph of description
+            // For simplicity, we will only use titles for now
+            const docs = appState.allHeadlines.map(h => `${h.title}`);
             docs.forEach(doc => {
                 const terms = new Set(); // Use a set to count doc frequency only once per doc
                 const parsed = nlp(doc);
                 // Extract Nouns, Proper Nouns (People, Places, Orgs), and Verbs
                 const relevantTerms = [
                     ...parsed.nouns().out('array'),
-                    ...parsed.verbs().out('array')
+                    // ...parsed.verbs().out('array')
                 ];
 
                 relevantTerms.forEach(term => {
